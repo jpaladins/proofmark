@@ -11,16 +11,30 @@ const REASON_COPY = {
 
 type State = 'idle' | 'over' | 'rejected' | 'accepted'
 
+/** Default validation: a real ZIP archive. Returns an error message or undefined. */
+async function zipError(file: File): Promise<string | undefined> {
+  const v = await validateZip(file)
+  return v.ok ? undefined : REASON_COPY[v.reason]
+}
+
 export function DropZone({
   onFile,
   disabled,
   label = "Trascina qui l'archivio .zip",
   compact,
+  validate = zipError,
+  inputLabel = 'Seleziona archivio .zip',
+  accept = '.zip,application/zip,application/x-zip-compressed',
+  multipleMessage = 'Carica un solo archivio .zip',
 }: {
   onFile: (file: File) => void
   disabled?: boolean
   label?: string
   compact?: boolean
+  validate?: (file: File) => Promise<string | undefined>
+  inputLabel?: string
+  accept?: string
+  multipleMessage?: string
 }) {
   const id = useId()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -32,14 +46,14 @@ export function DropZone({
     if (!files || files.length === 0 || disabled) return
     if (files.length > 1) {
       setState('rejected')
-      setMessage('Carica un solo archivio .zip')
+      setMessage(multipleMessage)
       return
     }
     const file = files[0]
-    const v = await validateZip(file)
-    if (!v.ok) {
+    const problem = await validate(file)
+    if (problem) {
       setState('rejected')
-      setMessage(REASON_COPY[v.reason])
+      setMessage(problem)
       setAccepted(undefined)
       return
     }
@@ -79,8 +93,8 @@ export function DropZone({
         ref={inputRef}
         id={id}
         type="file"
-        accept=".zip,application/zip,application/x-zip-compressed"
-        aria-label="Seleziona archivio .zip"
+        accept={accept}
+        aria-label={inputLabel}
         className="sr-only"
         disabled={disabled}
         onChange={(e) => {
