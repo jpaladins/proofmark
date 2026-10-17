@@ -34,7 +34,7 @@ export async function requestTimestamp(sha256Hex: string, opts: RequestTimestamp
   if (result.info.imprintHex !== sha256Hex.toLowerCase()) {
     throw new TsaError('mismatch', "La marca temporale ricevuta non corrisponde all'impronta inviata.")
   }
-  if (result.info.nonce !== undefined && result.info.nonce !== nonce) {
+  if (result.info.nonce !== nonce) {
     throw new TsaError('mismatch', 'La marca temporale ricevuta non corrisponde alla richiesta (nonce).')
   }
   return result

@@ -1,4 +1,6 @@
+import * as pkijs from 'pkijs'
 import { describe, expect, test } from 'vitest'
+import { makeTestTsa } from '@/test/testTsa'
 import { fixture, fixtureText } from '@/test/fixtures'
 import { requestTimestamp } from './client'
 import { parseTimeStampToken, parseTimeStampResp } from './rfc3161'
@@ -37,6 +39,19 @@ describe('requestTimestamp', () => {
 
   test('throws mismatch when the nonce differs', async () => {
     await expect(requestTimestamp(HASH, { fetchImpl: reply(TSR_BYTES), nonce: NONCE + 1n })).rejects.toMatchObject({
+      code: 'mismatch',
+    })
+  })
+
+  test('throws mismatch when the response omits the requested nonce', async () => {
+    const tsa = await makeTestTsa()
+    const { token } = await tsa.timestamp(HASH) // the test TSA never echoes a nonce
+    const resp = new pkijs.TimeStampResp({
+      status: new pkijs.PKIStatusInfo({ status: pkijs.PKIStatus.granted }),
+      timeStampToken: pkijs.ContentInfo.fromBER(token),
+    })
+    const der = new Uint8Array(resp.toSchema().toBER(false))
+    await expect(requestTimestamp(HASH, { fetchImpl: reply(der), nonce: NONCE })).rejects.toMatchObject({
       code: 'mismatch',
     })
   })
