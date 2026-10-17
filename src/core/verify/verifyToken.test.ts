@@ -29,6 +29,14 @@ describe('verifyTimestampToken', () => {
     ])
   })
 
+  test('an unparseable token fails a dedicated token check with the parse error as detail', async () => {
+    const checks = await verifyTimestampToken(new Uint8Array([0x30, 0x03, 0x02, 0x01, 0x01]), HASH)
+    expect(checks).toHaveLength(1)
+    expect(checks[0]).toMatchObject({ id: 'token', status: 'fail', label: 'Token di marca temporale non leggibile' })
+    expect(checks[0].detail).toEqual(expect.any(String))
+    expect(checks[0].detail!.length).toBeGreaterThan(0)
+  })
+
   test('a different archive hash fails the imprint check', async () => {
     const checks = await verifyTimestampToken(TOKEN, '00'.repeat(32))
     expect(byId(checks, 'imprint')).toMatchObject({
