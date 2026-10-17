@@ -23,6 +23,24 @@ describe('/api/tsa', () => {
     expect((await onRequestPost({ request: post(der(1025)) })).status).toBe(413)
   })
 
+  test('stops reading an unbounded streamed body after 1 KB and answers 413', async () => {
+    let pulled = 0
+    const endless = new ReadableStream<Uint8Array>({
+      pull(c) {
+        pulled += 256
+        c.enqueue(new Uint8Array(256).fill(0x30))
+      },
+    })
+    const request = new Request('https://proofmark.jpaladins.ovh/api/tsa', {
+      method: 'POST',
+      headers: { 'Content-Type': TSQ },
+      body: endless,
+      duplex: 'half',
+    } as RequestInit)
+    expect((await onRequestPost({ request })).status).toBe(413)
+    expect(pulled).toBeLessThan(8 * 1024)
+  })
+
   test('rejects bodies that are not a DER SEQUENCE with 400', async () => {
     expect((await onRequestPost({ request: post(new Uint8Array([0x31, 1, 2])) })).status).toBe(400)
   })

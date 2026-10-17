@@ -60,6 +60,43 @@ Ora il traffico passa da una zona Cloudflare tua, quindi la regola di rate limit
 
 > La regola vale solo per `proofmark.jpaladins.ovh`. L'indirizzo tecnico `<progetto>.pages.dev` resta raggiungibile e non ne è coperto. Per un servizio a basso traffico è un rischio accettabile.
 
+### Chiudere anche l'indirizzo `*.pages.dev`
+
+Il binding Rate Limiting dei Workers non è disponibile nelle Pages Functions ([documentazione](https://developers.cloudflare.com/pages/functions/bindings/), verificato il 2026-10-17). La regola WAF qui sopra resta quindi la soluzione principale. Per coprire anche `<progetto>.pages.dev` puoi configurare un **Bulk Redirect** da quell'indirizzo verso `proofmark.jpaladins.ovh`.
+
+### Alternative senza WAF
+
+#### Worker separato con binding Rate Limiting, chiamato tramite Service binding
+
+Le Pages Functions supportano i **Service binding** (chiave `services`). Il binding `ratelimits` può quindi stare in un piccolo Worker separato (ad esempio `proofmark-ratelimit`), che espone un controllo `limit({ key })`. La Function `/api/tsa` lo interroga con la chiave `CF-Connecting-IP` prima di inoltrare la richiesta a DigiCert:
+
+```toml
+# wrangler.toml del Worker
+[[ratelimits]]
+name = "TSA_LIMITER"
+namespace_id = "1001"
+  [ratelimits.simple]
+  limit = 20
+  period = 60
+```
+
+```toml
+# wrangler.toml di Pages
+[[services]]
+binding = "RATE_LIMITER"
+service = "proofmark-ratelimit"
+```
+
+Funziona anche su `*.pages.dev` e resta nel piano Free, ma richiede un secondo deploy da mantenere. Il contatore è applicato **per singolo data center Cloudflare** ed è volutamente approssimativo ("eventually consistent"): serve contro gli abusi, non come conteggio preciso.
+
+#### Contatore in un Durable Object o in KV
+
+Un Durable Object definito in un Worker separato e collegato a Pages con `durable_objects` offre un conteggio preciso e globale, ma è più complesso. KV è eventualmente consistente, con un ritardo fino a circa 60 secondi, e consuma rapidamente le scritture gratuite giornaliere, quindi non è adatto.
+
+#### Senza nessun limite
+
+Il servizio funziona lo stesso. La Function accetta solo `POST` `application/timestamp-query` fino a 1 KB e ha un timeout verso DigiCert, che applica i propri limiti.
+
 ## 5. Controllo finale
 
 1. Apri `https://proofmark.jpaladins.ovh`, certifica un piccolo `.zip` e scarica l'attestato.

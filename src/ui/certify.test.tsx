@@ -134,6 +134,20 @@ test('buildReminderIcs creates a calendar event pointing to the verify page', ()
   expect(ics).toContain('DTSTART:20261017T192058Z')
   expect(ics).toContain('SUMMARY:ProofMark — conferma Bitcoin')
   expect(ics).toContain('URL:https://proofmark.jpaladins.ovh/verifica')
-  expect(ics).toContain('opera\\, v2.zip')
+  expect(ics.replace(/\r\n /g, '')).toContain('opera\\, v2.zip')
   expect(ics.trimEnd().endsWith('END:VCALENDAR')).toBe(true)
+})
+
+test('buildReminderIcs folds lines at 75 octets without splitting UTF-8 characters', () => {
+  const fileName = `${'è'.repeat(60)}-${'a'.repeat(200)}.zip`
+  const ics = buildReminderIcs({ at: new Date('2026-10-17T19:20:58Z'), certId: 'PM-ABC-20261017', fileName })
+  const strict = new TextDecoder('utf-8', { fatal: true })
+  const lines = ics.split('\r\n').slice(0, -1)
+  for (const line of lines) {
+    const octets = new TextEncoder().encode(line)
+    expect(octets.length).toBeLessThanOrEqual(75)
+    expect(() => strict.decode(octets)).not.toThrow()
+  }
+  expect(lines.some((l) => l.startsWith(' '))).toBe(true)
+  expect(ics.replace(/\r\n /g, '')).toContain(`archivio ${fileName} e`)
 })

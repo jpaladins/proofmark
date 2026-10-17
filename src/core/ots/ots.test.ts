@@ -37,6 +37,18 @@ describe('stampHash', () => {
     }) as typeof fetch
     await expect(stampHash(HASH, { fetchImpl })).rejects.toMatchObject({ code: 'network' })
   })
+  test('cancels every calendar request when the caller signal fires', async () => {
+    const caller = new AbortController()
+    const signals: AbortSignal[] = []
+    const fetchImpl = ((_: string, init?: RequestInit) =>
+      new Promise<Response>((_, reject) => {
+        signals.push(init!.signal!)
+        init!.signal!.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+        if (signals.length === OTS_CALENDARS.length) caller.abort()
+      })) as typeof fetch
+    await expect(stampHash(HASH, { fetchImpl, signal: caller.signal })).rejects.toMatchObject({ name: 'AbortError' })
+    expect(signals.every((s) => s.aborted)).toBe(true)
+  })
 })
 
 describe('inspectOts', () => {
