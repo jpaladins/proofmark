@@ -24,5 +24,26 @@ export function buildReminderIcs(opts: { at: Date; certId: string; fileName: str
     'END:VEVENT',
     'END:VCALENDAR',
   ]
-  return lines.join('\r\n') + '\r\n'
+  return lines.map(fold).join('\r\n') + '\r\n'
+}
+
+/** RFC 5545 §3.1: lines longer than 75 octets continue on lines starting with a space. */
+function fold(line: string): string {
+  const enc = new TextEncoder()
+  const out: string[] = []
+  let current = ''
+  let octets = 0
+  for (const ch of line) {
+    const n = enc.encode(ch).length
+    // Continuation lines spend one octet on the leading space.
+    if (octets + n > (out.length === 0 ? 75 : 74)) {
+      out.push(current)
+      current = ''
+      octets = 0
+    }
+    current += ch
+    octets += n
+  }
+  out.push(current)
+  return out.join('\r\n ')
 }
