@@ -168,7 +168,7 @@ export function buildAttestatoContent(
           code: [
             '# radice: DigiCert Trusted Root G4 (digicert.com, Root Certificates)',
             `openssl ts -verify -digest ${cert.file.sha256} \\`,
-            '  -in prova.tsr -CAfile DigiCertTrustedRootG4.pem',
+            '  -in prova.tsr -token_in -CAfile DigiCertTrustedRootG4.pem',
           ],
         },
         {
@@ -197,7 +197,7 @@ export function buildAttestatoContent(
       {
         label: 'Marca temporale',
         value:
-          'Marca RFC 3161 rilasciata dalla TSA pubblica di DigiCert, Inc., che non è un prestatore qualificato ai sensi del Regolamento (UE) 910/2014 (eIDAS): non ha il valore di una validazione temporale elettronica qualificata.',
+          'Marca RFC 3161 rilasciata dal servizio pubblico timestamp.digicert.com di DigiCert, Inc., che non è un servizio di validazione temporale elettronica qualificato ai sensi del Regolamento (UE) 910/2014 (eIDAS).',
       },
       {
         label: 'Blockchain',

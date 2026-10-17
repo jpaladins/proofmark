@@ -93,7 +93,7 @@ certutil -hashfile archivio.zip SHA256      # Windows
 shasum -a 256 archivio.zip                  # macOS / Linux
 
 # 2. marca DigiCert (prova.tsr è allegata al PDF e inclusa nel JSON)
-openssl ts -verify -digest <impronta> -in prova.tsr -CAfile DigiCertTrustedRootG4.pem
+openssl ts -verify -digest <impronta> -in prova.tsr -token_in -CAfile DigiCertTrustedRootG4.pem
 
 # 3. ancoraggio Bitcoin
 ots upgrade prova.ots
@@ -102,7 +102,7 @@ ots verify prova.ots -f archivio.zip
 
 ## Limiti
 
-- La TSA pubblica di DigiCert **non** è un prestatore qualificato ai sensi del Regolamento (UE) 910/2014 (eIDAS). L'attestato è un elemento di prova di anteriorità liberamente valutabile, non una validazione temporale elettronica qualificata.
+- Il servizio pubblico `timestamp.digicert.com` **non** è un servizio di validazione temporale qualificato ai sensi del Regolamento (UE) 910/2014 (eIDAS). L'attestato è un elemento di prova di anteriorità liberamente valutabile, non una validazione temporale elettronica qualificata.
 - L'attestato dimostra che l'archivio esisteva non oltre una certa data. Non dimostra chi ne sia l'autore. Autore e titolo sono dati dichiarati dall'utente.
 - Conserva lo `.zip` **esattamente com'è**: ricomprimere gli stessi file produce un'impronta diversa.
 

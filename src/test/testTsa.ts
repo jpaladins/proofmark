@@ -17,6 +17,7 @@ async function makeCert(opts: {
   keys: CryptoKeyPair
   signer: CryptoKey
   ca: boolean
+  eku?: boolean
 }) {
   const cert = new pkijs.Certificate()
   cert.version = 2
@@ -32,6 +33,16 @@ async function makeCert(opts: {
       extnValue: new pkijs.BasicConstraints({ cA: opts.ca }).toSchema().toBER(false),
       parsedValue: new pkijs.BasicConstraints({ cA: opts.ca }),
     }),
+    ...(opts.eku
+      ? [
+          new pkijs.Extension({
+            extnID: '2.5.29.37',
+            critical: true,
+            extnValue: new pkijs.ExtKeyUsage({ keyPurposes: ['1.3.6.1.5.5.7.3.8'] }).toSchema().toBER(false),
+            parsedValue: new pkijs.ExtKeyUsage({ keyPurposes: ['1.3.6.1.5.5.7.3.8'] }),
+          }),
+        ]
+      : []),
   ]
   await cert.subjectPublicKeyInfo.importKey(opts.keys.publicKey)
   await cert.sign(opts.signer, 'SHA-256')
@@ -43,7 +54,7 @@ function toPem(cert: pkijs.Certificate): string {
   return `-----BEGIN CERTIFICATE-----\n${b64.match(/.{1,64}/g)!.join('\n')}\n-----END CERTIFICATE-----\n`
 }
 
-export async function makeTestTsa(): Promise<{
+export async function makeTestTsa({ eku = true }: { eku?: boolean } = {}): Promise<{
   trustPem: string
   seen: string[]
   timestamp(sha256Hex: string): Promise<{ token: Uint8Array<ArrayBuffer> }>
@@ -51,7 +62,7 @@ export async function makeTestTsa(): Promise<{
   const rootKeys = (await crypto.subtle.generateKey(ALG, true, ['sign', 'verify'])) as CryptoKeyPair
   const leafKeys = (await crypto.subtle.generateKey(ALG, true, ['sign', 'verify'])) as CryptoKeyPair
   const root = await makeCert({ serial: 1, subject: 'Test Root', issuer: 'Test Root', keys: rootKeys, signer: rootKeys.privateKey, ca: true })
-  const leaf = await makeCert({ serial: 2, subject: 'Test TSA', issuer: 'Test Root', keys: leafKeys, signer: rootKeys.privateKey, ca: false })
+  const leaf = await makeCert({ serial: 2, subject: 'Test TSA', issuer: 'Test Root', keys: leafKeys, signer: rootKeys.privateKey, ca: false, eku })
   const seen: string[] = []
   let serial = 100
 

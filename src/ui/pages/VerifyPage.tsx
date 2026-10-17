@@ -132,6 +132,8 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
 
   const allChecks = checks ? [...checks, ...(bitcoin ? [bitcoin.check] : [])] : undefined
   const failed = allChecks?.some((c) => c.status === 'fail')
+  // Revision 2 is only issued for evidence that fully verified offline (an unsealed PDF/JSON may warn).
+  const canIssueRev2 = !!checks?.every((c) => c.status === 'ok' || (c.id === 'pdf-seal' && c.status === 'warn'))
 
   return (
     <div className="max-w-3xl">
@@ -207,7 +209,7 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
                 {busy === 'bitcoin' ? <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <Bitcoin aria-hidden className="size-4" />}
                 Controlla conferma Bitcoin (richiede connessione)
               </Button>
-              {bitcoin?.upgraded && (
+              {bitcoin?.upgraded && canIssueRev2 && (
                 <Button onClick={downloadRev2} disabled={!!busy}>
                   {busy === 'rev2' ? <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <Download aria-hidden className="size-4" />}
                   Scarica attestato aggiornato

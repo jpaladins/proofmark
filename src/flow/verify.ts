@@ -10,6 +10,8 @@ import {
   type Certificate,
 } from '@/core/cert/certificate'
 import type { Bytes } from '@/core/hash/sha256'
+import { bytesToBase64 } from '@/core/base64'
+import { parseTimeStampToken } from '@/core/tsa/rfc3161'
 import { inspectOts, upgradeOts, verifyOtsOnline } from '@/core/ots/ots'
 import { OtsError } from '@/core/ots/format'
 import type { FontBytes } from '@/core/pdf/fonts'
@@ -66,6 +68,48 @@ export async function loadEvidence(file: File): Promise<Evidence> {
   throw new EvidenceError('format', "Carica l'attestato PDF o il certificato JSON di ProofMark.")
 }
 
+const fmtUtc = (d: Date) => `${d.toISOString().replace('T', ' ').slice(0, 19)} UTC`
+
+/** The certificate's timestamp fields are unsigned: they must match the signed token exactly. */
+function metadataCheck(ev: Evidence): Check {
+  try {
+    const t = parseTimeStampToken(ev.tsr)
+    const r = ev.cert.rfc3161
+    const same =
+      new Date(r.genTime).getTime() === t.genTime.getTime() &&
+      r.serial.toLowerCase() === t.serialHex.toLowerCase() &&
+      r.tsa === t.tsa &&
+      r.policy === t.policy
+    return same
+      ? { id: 'meta', status: 'ok', label: `Data certificata dalla marca temporale: ${fmtUtc(t.genTime)}` }
+      : {
+          id: 'meta',
+          status: 'fail',
+          label: 'I dati del certificato non corrispondono alla marca temporale firmata',
+          detail: `Marca temporale firmata: ${fmtUtc(t.genTime)}`,
+        }
+  } catch {
+    return { id: 'meta', status: 'fail', label: 'Marca temporale non leggibile' }
+  }
+}
+
+/** Rebuilds the timestamp fields from the signed token, ignoring what the uploaded JSON claims. */
+function fromToken(ev: Evidence): Certificate {
+  const t = parseTimeStampToken(ev.tsr)
+  return {
+    ...ev.cert,
+    file: { ...ev.cert.file, sha256: t.imprintHex },
+    rfc3161: {
+      tsa: t.tsa,
+      genTime: t.genTime.toISOString(),
+      serial: t.serialHex,
+      policy: t.policy,
+      ...(t.nonce !== undefined ? { nonce: t.nonce.toString(16) } : {}),
+      tokenBase64: bytesToBase64(ev.tsr),
+    },
+  }
+}
+
 export async function verifyOffline(zipSha256: string, ev: Evidence, opts: { trustPem?: string } = {}): Promise<Check[]> {
   const expected = ev.cert.file.sha256
   const checks: Check[] = [
@@ -79,6 +123,7 @@ export async function verifyOffline(zipSha256: string, ev: Evidence, opts: { tru
         },
   ]
   checks.push(...(await verifyTimestampToken(ev.tsr, expected, opts)))
+  checks.push(metadataCheck(ev))
 
   if (!ev.ots) {
     checks.push({ id: 'ots-hash', status: 'warn', label: 'Prova Bitcoin assente in questo certificato' })
@@ -156,7 +201,7 @@ export async function buildRevision2(
   upgraded: { ots: Bytes; block: number; blockTime: Date },
   deps: Revision2Deps,
 ): Promise<{ certificate: Certificate; pdf: Bytes; pdfSealed: boolean; json: string; ots: Bytes }> {
-  const certificate = upgradeCertificate(ev.cert, upgraded.ots, upgraded)
+  const certificate = upgradeCertificate(fromToken(ev), upgraded.ots, upgraded)
   const proofs = { tsr: ev.tsr, ots: upgraded.ots }
   let pdf: Bytes
   let pdfSealed = true

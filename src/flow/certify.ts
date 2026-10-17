@@ -8,6 +8,7 @@ import type { HashProgress } from '@/core/hash/hashFile'
 import { inspectOts } from '@/core/ots/ots'
 import type { FontBytes } from '@/core/pdf/fonts'
 import { TsaError, type TsaErrorCode, type TsaResult } from '@/core/tsa/rfc3161'
+import { verifyTimestampToken } from '@/core/verify/verifyToken'
 
 export type StepId = 'hash' | 'tsa' | 'ots' | 'cert'
 export type StepState = { status: 'idle' | 'active' | 'done' | 'warn' | 'error'; message?: string; progress?: number }
@@ -99,6 +100,9 @@ export async function runCertification(
     onStep('tsa', { status: 'active' })
     try {
       tsa = await deps.requestTimestamp(sha256)
+      // The relay→DigiCert hop is plain HTTP: accept only a token that verifies against the pinned root.
+      const checks = await verifyTimestampToken(tsa.token, sha256)
+      if (checks.some((c) => c.status !== 'ok')) throw new TsaError('malformed', 'Token DigiCert non valido.')
     } catch (err) {
       const message = err instanceof TsaError ? TSA_ERROR_COPY[err.code] : TSA_ERROR_COPY.network
       onStep('tsa', { status: 'error', message })

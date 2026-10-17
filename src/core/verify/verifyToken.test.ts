@@ -47,3 +47,14 @@ describe('verifyTimestampToken', () => {
     expect(byId(checks, 'chain')?.status).toBe('fail')
   })
 })
+
+test('a signer certificate without the timeStamping EKU fails the chain check', async () => {
+  const { makeTestTsa } = await import('@/test/testTsa')
+  const rogue = await makeTestTsa({ eku: false })
+  const { token } = await rogue.timestamp('cd'.repeat(32))
+  const checks = await verifyTimestampToken(token, 'cd'.repeat(32), { trustPem: rogue.trustPem })
+  expect(byId(checks, 'chain')).toMatchObject({
+    status: 'fail',
+    label: 'Il certificato del firmatario non è abilitato alle marche temporali',
+  })
+}, 20_000)

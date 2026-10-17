@@ -110,3 +110,21 @@ describe('VerifyPage', () => {
     expect(await screen.findByText("Carica l'attestato PDF o il certificato JSON di ProofMark")).toBeInTheDocument()
   })
 })
+
+test('never offers the updated attestation when an offline check failed', async () => {
+  const user = userEvent.setup()
+  const deps = fakeDeps({
+    verifyOffline: vi.fn(async () => [{ id: 'hash', status: 'fail', label: 'diverso' }] as Check[]),
+    checkBitcoin: vi.fn(async () => ({
+      check: { id: 'bitcoin', status: 'ok', label: 'Confermato nel blocco #1' } as Check,
+      upgraded: { ots: new Uint8Array([2]), block: 1, blockTime: new Date() },
+    })),
+  })
+  render(<VerifyPage deps={deps} />)
+  await user.upload(zipInput(), zip())
+  await user.upload(evidenceInput(), json())
+  await user.click(screen.getByRole('button', { name: 'Verifica' }))
+  await user.click(await screen.findByRole('button', { name: 'Controlla conferma Bitcoin (richiede connessione)' }))
+  await screen.findByText('Confermato nel blocco #1')
+  expect(screen.queryByRole('button', { name: 'Scarica attestato aggiornato' })).toBeNull()
+})

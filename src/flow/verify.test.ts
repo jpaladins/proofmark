@@ -65,6 +65,7 @@ describe('verifyOffline', () => {
       ['imprint', 'ok'],
       ['signature', 'ok'],
       ['chain', 'ok'],
+      ['meta', 'ok'],
       ['ots-hash', 'ok'],
     ])
   })
@@ -120,4 +121,33 @@ test('buildRevision2 issues an -R2 certificate with the confirmed proof', async 
   expect(JSON.parse(out.json).opentimestamps.status).toBe('confirmed')
   expect(out.pdf).toEqual(new Uint8Array([7]))
   expect(out.pdfSealed).toBe(true)
+})
+
+async function forgedJson(): Promise<File> {
+  const cert = JSON.parse(await jsonFile.text())
+  cert.rfc3161.genTime = '2019-01-01T00:00:00.000Z'
+  return new File([JSON.stringify(cert)], 'forged.json', { type: 'application/json' })
+}
+
+test('a certificate whose date was edited fails the metadata check', async () => {
+  const checks = await verifyOffline(HASH, await loadEvidence(await forgedJson()))
+  expect(checks.find((c) => c.id === 'meta')).toMatchObject({
+    status: 'fail',
+    label: 'I dati del certificato non corrispondono alla marca temporale firmata',
+  })
+})
+
+test('the metadata check states the date proven by the signed token', async () => {
+  const checks = await verifyOffline(HASH, await loadEvidence(jsonFile))
+  expect(checks.find((c) => c.id === 'meta')?.label).toContain('Data certificata dalla marca temporale:')
+})
+
+test('revision 2 takes its timestamp data from the signed token, not from the uploaded JSON', async () => {
+  const ev = await loadEvidence(await forgedJson())
+  const out = await buildRevision2(
+    ev,
+    { ots: confirmedOts, block: 123, blockTime: new Date('2026-10-17T21:14:00Z') },
+    { renderAttestato: (c, p, o) => renderAttestato(c, p, { ...o, fonts }), sealPdf: async () => new Uint8Array([7]), timestamp: async () => TSA },
+  )
+  expect(out.certificate.rfc3161.genTime).toBe(TSA.info.genTime.toISOString())
 })

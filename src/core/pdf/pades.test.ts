@@ -19,7 +19,7 @@ const sha256 = async (b: Uint8Array) => bytesToHex(new Uint8Array(await crypto.s
 beforeAll(async () => {
   tsa = await makeTestTsa()
   const doc = await renderAttestato(pendingCert(), { tsr: TSA.token, ots: PENDING_OTS }, { fonts })
-  sealed = await sealPdf(doc, tsa.timestamp)
+  sealed = await sealPdf(doc, tsa.timestamp, { trustPem: tsa.trustPem })
 }, 30_000)
 
 test('the test TSA issues tokens that pass verification against its own root', async () => {
@@ -80,3 +80,9 @@ describe('verifyPdfSeal', () => {
     expect(await verifyPdfSeal(sealed)).toMatchObject({ status: 'fail' })
   })
 })
+
+test('sealPdf refuses a token that does not cover the document', async () => {
+  const doc = await renderAttestato(pendingCert(), { tsr: TSA.token }, { fonts })
+  const wrong = async () => tsa.timestamp('ef'.repeat(32))
+  await expect(sealPdf(doc, wrong, { trustPem: tsa.trustPem })).rejects.toThrow()
+}, 20_000)
