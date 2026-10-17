@@ -56,6 +56,21 @@ describe('requestTimestamp', () => {
     })
   })
 
+  test('aborts the request when the caller signal fires', async () => {
+    const caller = new AbortController()
+    let seen: AbortSignal | undefined
+    const fetchImpl = (_: unknown, init?: RequestInit) =>
+      new Promise<Response>((_, reject) => {
+        seen = init?.signal ?? undefined
+        seen?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+        caller.abort()
+      })
+    await expect(
+      requestTimestamp(HASH, { fetchImpl: fetchImpl as typeof fetch, signal: caller.signal }),
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(seen?.aborted).toBe(true)
+  })
+
   test('throws network when fetch rejects', async () => {
     const fetchImpl = async () => {
       throw new TypeError('Failed to fetch')
