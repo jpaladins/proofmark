@@ -1,4 +1,6 @@
+import * as pkijs from 'pkijs'
 import { describe, expect, test } from 'vitest'
+import { makeTestTsa } from '@/test/testTsa'
 import { fixture, fixtureText } from '@/test/fixtures'
 import { requestTimestamp } from './client'
 import { parseTimeStampToken, parseTimeStampResp } from './rfc3161'
@@ -39,6 +41,34 @@ describe('requestTimestamp', () => {
     await expect(requestTimestamp(HASH, { fetchImpl: reply(TSR_BYTES), nonce: NONCE + 1n })).rejects.toMatchObject({
       code: 'mismatch',
     })
+  })
+
+  test('throws mismatch when the response omits the requested nonce', async () => {
+    const tsa = await makeTestTsa()
+    const { token } = await tsa.timestamp(HASH) // the test TSA never echoes a nonce
+    const resp = new pkijs.TimeStampResp({
+      status: new pkijs.PKIStatusInfo({ status: pkijs.PKIStatus.granted }),
+      timeStampToken: pkijs.ContentInfo.fromBER(token),
+    })
+    const der = new Uint8Array(resp.toSchema().toBER(false))
+    await expect(requestTimestamp(HASH, { fetchImpl: reply(der), nonce: NONCE })).rejects.toMatchObject({
+      code: 'mismatch',
+    })
+  })
+
+  test('aborts the request when the caller signal fires', async () => {
+    const caller = new AbortController()
+    let seen: AbortSignal | undefined
+    const fetchImpl = (_: unknown, init?: RequestInit) =>
+      new Promise<Response>((_, reject) => {
+        seen = init?.signal ?? undefined
+        seen?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+        caller.abort()
+      })
+    await expect(
+      requestTimestamp(HASH, { fetchImpl: fetchImpl as typeof fetch, signal: caller.signal }),
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(seen?.aborted).toBe(true)
   })
 
   test('throws network when fetch rejects', async () => {

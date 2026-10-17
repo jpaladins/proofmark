@@ -1,4 +1,4 @@
-import { Bitcoin, Download, Loader2, ShieldCheck } from 'lucide-react'
+import { Bitcoin, Download, FileJson, FileText, Loader2, RefreshCw, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import { hashFile } from '@/core/hash/hashFile'
 import { requestTimestamp } from '@/core/tsa/client'
@@ -65,17 +65,33 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
   const [checks, setChecks] = useState<Check[]>()
   const [evidence, setEvidence] = useState<Evidence>()
   const [bitcoin, setBitcoin] = useState<Awaited<ReturnType<VerifyPageDeps['checkBitcoin']>>>()
+  const [rev2, setRev2] = useState<Awaited<ReturnType<VerifyPageDeps['buildRevision2']>>>()
   const [rev2Warning, setRev2Warning] = useState<string>()
+
+  // A result only describes the files it was computed from: drop it as soon as either changes.
+  function clearResult() {
+    setError(undefined)
+    setChecks(undefined)
+    setEvidence(undefined)
+    setBitcoin(undefined)
+    setRev2(undefined)
+    setRev2Warning(undefined)
+  }
+  const chooseZip = (f: File) => {
+    clearResult()
+    setZip(f)
+  }
+  const chooseEvidence = (f: File) => {
+    clearResult()
+    setEvidenceFile(f)
+  }
 
   const canVerify = !!zip && (!!evidenceFile || !!fromQr) && !busy
 
   async function verify() {
     if (!zip) return
     setBusy('verify')
-    setError(undefined)
-    setChecks(undefined)
-    setBitcoin(undefined)
-    setRev2Warning(undefined)
+    clearResult()
     try {
       const sha256 = await deps.hashFile(zip, (p) => setProgress(p.total ? p.bytesDone / p.total : 1))
       if (!evidenceFile && fromQr) {
@@ -106,6 +122,8 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
   async function runBitcoin() {
     if (!evidence) return
     setBusy('bitcoin')
+    setRev2(undefined)
+    setRev2Warning(undefined)
     try {
       setBitcoin(await deps.checkBitcoin(evidence))
     } finally {
@@ -113,15 +131,14 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
     }
   }
 
-  async function downloadRev2() {
+  // Browsers block or prompt on several downloads from one click, so each file gets its own button.
+  async function generateRev2() {
     if (!evidence || !bitcoin?.upgraded) return
     setBusy('rev2')
+    setRev2Warning(undefined)
     try {
       const out = await deps.buildRevision2(evidence, bitcoin.upgraded)
-      const base = baseName(out.certificate.file.name)
-      downloadBytes(out.pdf, `${base}_attestato_R2.pdf`, 'application/pdf')
-      downloadBytes(out.json, `${base}_certificato_R2.json`, 'application/json')
-      downloadBytes(out.ots, `${base}.ots`, 'application/vnd.opentimestamps.v1')
+      setRev2(out)
       if (!out.pdfSealed) setRev2Warning('Attestato aggiornato generato senza sigillo sul documento: riprova più tardi.')
     } catch {
       setRev2Warning("Impossibile generare l'attestato aggiornato. Riprova.")
@@ -129,6 +146,27 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
       setBusy(undefined)
     }
   }
+
+  const rev2Base = rev2 ? baseName(rev2.certificate.file.name) : ''
+  const rev2Downloads = rev2
+    ? [
+        {
+          label: 'Scarica attestato PDF aggiornato',
+          icon: FileText,
+          run: () => downloadBytes(rev2.pdf, `${rev2Base}_attestato_R2.pdf`, 'application/pdf'),
+        },
+        {
+          label: 'Scarica certificato JSON aggiornato',
+          icon: FileJson,
+          run: () => downloadBytes(rev2.json, `${rev2Base}_certificato_R2.json`, 'application/json'),
+        },
+        {
+          label: 'Scarica prova Bitcoin (.ots)',
+          icon: Download,
+          run: () => downloadBytes(rev2.ots, `${rev2Base}.ots`, 'application/vnd.opentimestamps.v1'),
+        },
+      ]
+    : []
 
   const allChecks = checks ? [...checks, ...(bitcoin ? [bitcoin.check] : [])] : undefined
   const failed = allChecks?.some((c) => c.status === 'fail')
@@ -153,12 +191,12 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
 
       <div className="mt-8 grid gap-6 sm:grid-cols-2">
         <Slot title="1. Archivio .zip">
-          <DropZone compact onFile={setZip} disabled={!!busy} label="Trascina l'archivio" />
+          <DropZone compact onFile={chooseZip} disabled={!!busy} label="Trascina l'archivio" />
         </Slot>
         <Slot title="2. Attestato PDF o certificato JSON">
           <DropZone
             compact
-            onFile={setEvidenceFile}
+            onFile={chooseEvidence}
             disabled={!!busy}
             label="Trascina il PDF o il JSON"
             inputLabel="Seleziona attestato PDF o certificato JSON"
@@ -209,12 +247,25 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
                 {busy === 'bitcoin' ? <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <Bitcoin aria-hidden className="size-4" />}
                 Controlla conferma Bitcoin (richiede connessione)
               </Button>
-              {bitcoin?.upgraded && canIssueRev2 && (
-                <Button onClick={downloadRev2} disabled={!!busy}>
-                  {busy === 'rev2' ? <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <Download aria-hidden className="size-4" />}
-                  Scarica attestato aggiornato
+              {bitcoin?.upgraded && canIssueRev2 && !rev2 && (
+                <Button onClick={generateRev2} disabled={!!busy}>
+                  {busy === 'rev2' ? <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <RefreshCw aria-hidden className="size-4" />}
+                  Genera attestato aggiornato
                 </Button>
               )}
+            </div>
+          )}
+          {rev2 && (
+            <div className="mt-6 rounded-xl border border-line bg-surface p-5">
+              <p className="text-sm font-medium text-ink-2">Attestato aggiornato pronto: scarica ogni file.</p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                {rev2Downloads.map(({ label, icon: Icon, run }, i) => (
+                  <Button key={label} variant={i === 0 ? undefined : 'secondary'} onClick={run}>
+                    <Icon aria-hidden className="size-4" />
+                    {label}
+                  </Button>
+                ))}
+              </div>
             </div>
           )}
           {rev2Warning && (

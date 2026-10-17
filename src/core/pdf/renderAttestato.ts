@@ -54,6 +54,17 @@ const W = 595.28
 const H = 841.89
 const M = 48
 const CW = W - 2 * M
+// Page-1 content must end this far above the bottom edge to clear the footer rule (y = 46).
+const CONTENT_FLOOR = 54
+
+/** Row typography and vertical rhythm; page 1 switches to DENSE when the longest inputs would reach the footer. */
+type Density = { size: number; mono: number; lead: number; pad: number; gap: number }
+const NORMAL: Density = { size: 8.8, mono: 8, lead: 1.4, pad: 5, gap: 14 }
+const DENSE: Density = { size: 8.2, mono: 7.4, lead: 1.3, pad: 3, gap: 10 }
+
+// Stand-in page for a measuring pass: text is still measured with the real fonts, nothing is drawn.
+const noop = () => {}
+const DRY_PAGE = { drawText: noop, drawSvgPath: noop, drawCircle: noop, drawRectangle: noop, drawLine: noop } as unknown as PDFPage
 
 type Face = { pdf: PDFFont; has: (cp: number) => boolean }
 type Faces = Record<keyof FontBytes, Face>
@@ -198,19 +209,19 @@ function sectionHeader(pen: Pen, n: number, label: string, x: number, top: numbe
   return top - 2 * r - 6
 }
 
-function drawRows(pen: Pen, rows: Row[], x: number, top: number, width: number, labelRatio = 0.38): number {
-  const size = 8.8
-  const lead = size * 1.4
+function drawRows(pen: Pen, rows: Row[], x: number, top: number, width: number, labelRatio = 0.38, d = NORMAL): number {
+  const size = d.size
+  const lead = size * d.lead
   const labelW = width * labelRatio
   const valueW = width - labelW - 6
   let y = top
   for (const row of rows) {
     const valueFace = row.mono ? pen.f.mono : pen.f.sans
-    const valueSize = row.mono ? 8 : size
+    const valueSize = row.mono ? d.mono : size
     const labelLines = pen.wrap(row.label, pen.f.sans, size, labelW - 6)
     const valueText = row.note ? `${row.value} ${row.note}` : row.value
     const valueLines = pen.wrap(valueText, valueFace, valueSize, valueW)
-    const h = Math.max(labelLines.length, valueLines.length) * lead + 5
+    const h = Math.max(labelLines.length, valueLines.length) * lead + d.pad
     labelLines.forEach((l, i) => pen.page.drawText(l, { x, y: y - 3 - size * 0.8 - i * lead, font: pen.f.sans.pdf, size, color: C.muted }))
     valueLines.forEach((l, i) =>
       pen.page.drawText(l, { x: x + labelW, y: y - 3 - size * 0.8 - i * lead, font: valueFace.pdf, size: valueSize, color: C.ink }),
@@ -241,7 +252,8 @@ function drawFooter(pen: Pen, left: string, page: number) {
   pen.textRight(`${APP_HOST} · Pagina ${page} di 2`, W - M, y, pen.f.sans, 7, C.muted)
 }
 
-function drawPage1(pen: Pen, c: AttestatoContent, sha256: string) {
+/** Draws page 1 and returns the lowest y its content reaches. */
+function drawPage1(pen: Pen, c: AttestatoContent, sha256: string, d = NORMAL): number {
   const { f } = pen
   drawGradientBar(pen.page)
   let y = H - M + 6
@@ -285,7 +297,7 @@ function drawPage1(pen: Pen, c: AttestatoContent, sha256: string) {
   pen.roundRect(qx, y, qrBox, heroH, 6, C.white, C.line)
   drawQr(pen, verifyUrl(sha256), qx + 10, y - 8, qrBox - 20)
   pen.text(c.qrCaption, qx + (qrBox - pen.width(c.qrCaption, f.sans, 6.5)) / 2, y - heroH + 7, f.sans, 6.5, C.muted)
-  y -= heroH + 14
+  y -= heroH + d.gap
 
   let n = 1
   if (c.declared) {
@@ -293,31 +305,31 @@ function drawPage1(pen: Pen, c: AttestatoContent, sha256: string) {
     const boxTop = y
     let by = y - 8
     pen.text(c.declared.tag.toUpperCase(), M + 10, by - 6, f.sans, 6.6, C.muted)
-    by = drawRows(pen, c.declared.rows, M + 10, by - 10, CW - 20)
+    by = drawRows(pen, c.declared.rows, M + 10, by - 10, CW - 20, undefined, d)
     const bh = boxTop - by + 6
     pen.page.drawRectangle({ x: M, y: boxTop - bh, width: CW, height: bh, borderColor: C.dashed, borderWidth: 0.8, borderDashArray: [3, 2] })
-    y = boxTop - bh - 12
+    y = boxTop - bh - d.gap + 2
   }
 
   y = sectionHeader(pen, n++, c.sections.subject, M, y, CW)
-  y = drawRows(pen, c.subject.rows, M, y, CW)
+  y = drawRows(pen, c.subject.rows, M, y, CW, undefined, d)
   y -= 6
   const hashH = 26
   pen.roundRect(M, y, CW, hashH, 4, C.soft, C.line)
   pen.page.drawRectangle({ x: M, y: y - hashH, width: 3, height: hashH, color: C.emerald })
   pen.text(c.subject.hash, M + 12, y - 16.5, f.monoMedium, 10.2, C.ink)
-  y -= hashH + 14
+  y -= hashH + d.gap
 
   // RFC 3161 and Bitcoin side by side
   const colW = (CW - 18) / 2
   const colTop = y
   let ly = sectionHeader(pen, n++, c.sections.rfc3161, M, colTop, colW)
   drawPill(pen, c.rfc3161.pill, M, ly - 10)
-  ly = drawRows(pen, c.rfc3161.rows, M, ly - 16, colW, 0.34)
+  ly = drawRows(pen, c.rfc3161.rows, M, ly - 16, colW, 0.34, d)
   const rx = M + colW + 18
   let ry = sectionHeader(pen, n++, c.sections.bitcoin, rx, colTop, colW)
   drawPill(pen, c.bitcoin.pill, rx, ry - 10)
-  ry = drawRows(pen, c.bitcoin.rows, rx, ry - 16, colW, 0.34)
+  ry = drawRows(pen, c.bitcoin.rows, rx, ry - 16, colW, 0.34, d)
   if (c.bitcoin.reminder) {
     ry -= 6
     const text = `${c.bitcoin.reminder.heading} ${c.bitcoin.reminder.body}`
@@ -327,7 +339,7 @@ function drawPage1(pen: Pen, c: AttestatoContent, sha256: string) {
     pen.para(text, rx + 8, ry - 6, colW - 16, f.sans, 8, C.amberText, 1.375)
     ry -= bh
   }
-  y = Math.min(ly, ry) - 14
+  y = Math.min(ly, ry) - d.gap
 
   y = sectionHeader(pen, n++, c.sections.statement, M, y, CW)
   const stLines = pen.wrap(c.statement, f.serifSemiBold, 9, CW - 24)
@@ -336,6 +348,7 @@ function drawPage1(pen: Pen, c: AttestatoContent, sha256: string) {
   pen.para(c.statement, M + 12, y - 8, CW - 24, f.serifSemiBold, 9, C.ink2, 1.45)
 
   drawFooter(pen, c.footer[0], 1)
+  return y - stH
 }
 
 function drawPage2(pen: Pen, c: AttestatoContent) {
@@ -431,7 +444,8 @@ export async function renderAttestato(
     attachments: files.map((x) => ({ name: x.name, size: x.bytes.length })),
   })
 
-  drawPage1(new Pen(doc.addPage([W, H]), faces), content, cert.file.sha256)
+  const fits = drawPage1(new Pen(DRY_PAGE, faces), content, cert.file.sha256) >= CONTENT_FLOOR
+  drawPage1(new Pen(doc.addPage([W, H]), faces), content, cert.file.sha256, fits ? NORMAL : DENSE)
   drawPage2(new Pen(doc.addPage([W, H]), faces), content)
 
   const now = new Date()

@@ -3,7 +3,7 @@ import type { Bytes } from '@/core/hash/sha256'
 import { certificateFromPem, DIGICERT_ROOT_G4 } from '@/core/trust'
 import { parseTimeStampToken, signedDataOf, signerCertificate } from '@/core/tsa/rfc3161'
 
-export type CheckId = 'hash' | 'imprint' | 'signature' | 'chain' | 'meta' | 'ots-hash' | 'bitcoin' | 'pdf-seal'
+export type CheckId = 'hash' | 'token' | 'imprint' | 'signature' | 'chain' | 'meta' | 'ots-hash' | 'bitcoin' | 'pdf-seal'
 export type Check = { id: CheckId; status: 'ok' | 'warn' | 'fail'; label: string; detail?: string }
 
 /** Offline verification of an RFC 3161 token: covered hash, CMS signature, and chain to the pinned root. */
@@ -32,8 +32,15 @@ export async function verifyTimestampToken(
     checks.push(await signatureCheck(signed))
     checks.push(await chainCheck(signed, genTime, opts.trustPem ?? DIGICERT_ROOT_G4))
     return checks
-  } catch {
-    return [{ id: 'imprint', status: 'fail', label: 'Token di marca temporale non leggibile' }]
+  } catch (err) {
+    return [
+      {
+        id: 'token',
+        status: 'fail',
+        label: 'Token di marca temporale non leggibile',
+        detail: err instanceof Error ? err.message : String(err),
+      },
+    ]
   }
 }
 
