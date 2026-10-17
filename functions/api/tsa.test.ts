@@ -4,7 +4,7 @@ import { onRequest, onRequestPost } from './tsa'
 const TSQ = 'application/timestamp-query'
 const TSR = 'application/timestamp-reply'
 const post = (body: BodyInit, type = TSQ) =>
-  new Request('https://proofmark.pages.dev/api/tsa', { method: 'POST', headers: { 'Content-Type': type }, body })
+  new Request('https://proofmark.jpaladins.ovh/api/tsa', { method: 'POST', headers: { 'Content-Type': type }, body })
 const der = (n = 59) => new Uint8Array([0x30, ...new Array(n - 1).fill(1)])
 
 afterEach(() => vi.unstubAllGlobals())

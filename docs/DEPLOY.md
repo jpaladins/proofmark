@@ -26,7 +26,7 @@ Il workflow `.github/workflows/ci.yml` esegue typecheck, lint, test e build su o
 1. Dashboard Cloudflare → **Workers & Pages** → **Create** → scheda **Pages** → **Connect to Git**.
 2. Autorizza GitHub e scegli il repository `proofmark`.
 3. Impostazioni di build:
-   - **Project name:** `proofmark` (determina l'indirizzo `proofmark.pages.dev`; se è occupato scegline un altro e aggiorna `APP_URL` in `src/core/app.ts`)
+   - **Project name:** un nome libero qualsiasi, per esempio `proofmark-jpaladins`. Determina solo l'indirizzo tecnico `*.pages.dev`, perché il sito pubblico usa il dominio personalizzato del passo 3.
    - **Production branch:** `main`
    - **Framework preset:** `Vite`
    - **Build command:** `npm run build`
@@ -36,20 +36,32 @@ Il workflow `.github/workflows/ci.yml` esegue typecheck, lint, test e build su o
 
 Da questo momento ogni push su `main` va in produzione e ogni pull request ottiene un'anteprima.
 
-## 3. Limite di richieste per `/api/tsa` (consigliato)
+## 3. Dominio personalizzato `proofmark.jpaladins.ovh`
 
-Il piano Free include una regola di rate limiting.
+Il dominio `jpaladins.ovh` è già gestito da Cloudflare, quindi bastano pochi clic.
 
-1. Dashboard → **Security** → **WAF** → **Rate limiting rules** → **Create rule**.
+1. Progetto Pages → **Custom domains** → **Set up a custom domain**.
+2. Inserisci `proofmark.jpaladins.ovh` → **Continue** → **Activate domain**. Cloudflare crea da solo il record `CNAME` verso `<progetto>.pages.dev` e il certificato HTTPS, che di solito è attivo in pochi minuti.
+3. Controlla che `https://proofmark.jpaladins.ovh` risponda.
+
+L'indirizzo pubblico è impostato in un solo punto, `APP_HOST` in `src/core/app.ts`. Il QR code, i link nel PDF e il promemoria del calendario lo usano tutti. Se un giorno cambi dominio, modifica quella costante e ripubblica.
+
+> Gli attestati già emessi contengono l'indirizzo stampato nel PDF e nel QR code. Mantieni attivo il dominio finché quegli attestati restano in circolazione.
+
+## 4. Limite di richieste per `/api/tsa` (consigliato)
+
+Ora il traffico passa da una zona Cloudflare tua, quindi la regola di rate limiting del piano Free è disponibile.
+
+1. Dashboard → zona `jpaladins.ovh` → **Security** → **WAF** → **Rate limiting rules** → **Create rule**.
 2. Configurala così:
-   - **Se:** `URI Path` *equals* `/api/tsa`
-   - **Soglia:** 20 richieste per 1 minuto, per IP
-   - **Azione:** Block per 1 minuto
+   - **Se:** `Hostname` *equals* `proofmark.jpaladins.ovh` **e** `URI Path` *equals* `/api/tsa`
+   - **Soglia:** 20 richieste per 10 secondi, per IP (il piano Free consente periodi di 10 secondi)
+   - **Azione:** Block per 10 secondi
 
-> La regola WAF richiede un dominio gestito da Cloudflare. Su `*.pages.dev` potrebbe non essere disponibile. In quel caso il servizio funziona lo stesso, protetto dai limiti propri di DigiCert.
+> La regola vale solo per `proofmark.jpaladins.ovh`. L'indirizzo tecnico `<progetto>.pages.dev` resta raggiungibile e non ne è coperto. Per un servizio a basso traffico è un rischio accettabile.
 
-## 4. Controllo finale
+## 5. Controllo finale
 
-1. Apri `https://proofmark.pages.dev`, certifica un piccolo `.zip` e scarica l'attestato.
+1. Apri `https://proofmark.jpaladins.ovh`, certifica un piccolo `.zip` e scarica l'attestato.
 2. Apri il PDF in **Adobe Acrobat Reader** e controlla il pannello Firme: deve comparire una marca temporale del documento emessa da DigiCert.
 3. In **Verifica**, carica lo `.zip` e il PDF: tutti i controlli devono risultare superati.

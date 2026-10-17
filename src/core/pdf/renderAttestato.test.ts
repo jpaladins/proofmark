@@ -45,5 +45,10 @@ describe('renderAttestato', () => {
 })
 
 test('verifyUrl puts the hash in the fragment', () => {
-  expect(verifyUrl('ab'.repeat(32))).toBe(`https://proofmark.pages.dev/verifica#sha256=${'ab'.repeat(32)}`)
+  expect(verifyUrl('ab'.repeat(32))).toBe(`https://proofmark.jpaladins.ovh/verifica#sha256=${'ab'.repeat(32)}`)
+})
+
+test('the page footer names the production host', async () => {
+  const { APP_HOST } = await import('@/core/app')
+  expect(APP_HOST).toBe('proofmark.jpaladins.ovh')
 })

@@ -9,7 +9,7 @@ const allText = (c: AttestatoContent) => JSON.stringify(c)
 describe('buildAttestatoContent', () => {
   test('a pending certificate carries the Bitcoin reminder in the box and first in the warnings', () => {
     const c = buildAttestatoContent(pendingCert(), { sealed: true, attachments: ATTACH })
-    expect(c.bitcoin.reminder?.body).toContain('proofmark.pages.dev/verifica')
+    expect(c.bitcoin.reminder?.body).toContain('proofmark.jpaladins.ovh/verifica')
     expect(c.bitcoin.pill).toEqual({ text: 'In attesa di conferma', tone: 'warn' })
     expect(c.bitcoin.rows[0].label).toBe("Stato all'emissione")
     expect(c.warnings.bullets[0]).toContain('attestato aggiornato')

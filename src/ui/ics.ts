@@ -1,4 +1,4 @@
-import { VERIFY_URL } from '@/core/app'
+import { APP_HOST, VERIFY_URL } from '@/core/app'
 
 const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
 const escape = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n')
@@ -12,7 +12,7 @@ export function buildReminderIcs(opts: { at: Date; certId: string; fileName: str
     'PRODID:-//ProofMark//Promemoria//IT',
     'CALSCALE:GREGORIAN',
     'BEGIN:VEVENT',
-    `UID:${opts.certId}@proofmark.pages.dev`,
+    `UID:${opts.certId}@${APP_HOST}`,
     `DTSTAMP:${stamp(new Date())}`,
     `DTSTART:${stamp(opts.at)}`,
     `DTEND:${stamp(end)}`,

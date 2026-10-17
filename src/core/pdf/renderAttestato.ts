@@ -17,7 +17,7 @@ import {
   type RGB,
 } from 'pdf-lib'
 import QRCode from 'qrcode'
-import { APP_VERSION, VERIFY_URL } from '@/core/app'
+import { APP_HOST, APP_VERSION, VERIFY_URL } from '@/core/app'
 import type { Bytes } from '@/core/hash/sha256'
 import { serializeCertificate, type Certificate } from '@/core/cert/certificate'
 import { buildAttestatoContent, type AttestatoContent, type Pill, type Row } from './content'
@@ -238,7 +238,7 @@ function drawFooter(pen: Pen, left: string, page: number) {
   pen.hline(M, W - M, y + 12)
   drawLock(pen, M, y)
   pen.text(left, M + 12, y, pen.f.sans, 7, C.ink2)
-  pen.textRight(`proofmark.pages.dev · Pagina ${page} di 2`, W - M, y, pen.f.sans, 7, C.muted)
+  pen.textRight(`${APP_HOST} · Pagina ${page} di 2`, W - M, y, pen.f.sans, 7, C.muted)
 }
 
 function drawPage1(pen: Pen, c: AttestatoContent, sha256: string) {
