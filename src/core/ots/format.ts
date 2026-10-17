@@ -35,6 +35,10 @@ const TAG_BITCOIN = new Uint8Array([0x05, 0x88, 0x96, 0x0d, 0x73, 0xd7, 0x19, 0x
 const MAX_MSG = 4096
 const MAX_PAYLOAD = 8192
 const MAX_URI = 1000
+// Every node owns a copy of its message, so a small crafted proof could otherwise expand into
+// gigabytes (e.g. thousands of sibling appends to a 4 KB message). Real proofs stay far below.
+const MAX_NODES = 10_000
+const MAX_TOTAL_MSG = 1 << 20
 
 export const OP_SHA1 = 0x02
 export const OP_RIPEMD160 = 0x03
@@ -88,8 +92,16 @@ export function concat(...parts: Uint8Array[]): Bytes {
 class Reader {
   private pos = 0
   private readonly buf: Uint8Array
+  private nodes = 0
+  private msgBytes = 0
   constructor(buf: Uint8Array) {
     this.buf = buf
+  }
+  /** Charges one decoded node holding `msg` against the parse budget. */
+  node(msg: Uint8Array) {
+    this.nodes += 1
+    this.msgBytes += msg.length
+    if (this.nodes > MAX_NODES || this.msgBytes > MAX_TOTAL_MSG) throw bad('prova troppo grande')
   }
   get done() {
     return this.pos === this.buf.length
@@ -112,7 +124,7 @@ class Reader {
       value += (b & 0x7f) * 2 ** shift
       if (!(b & 0x80)) return value
       shift += 7
-      if (shift > 49) throw bad('intero troppo grande')
+      if (shift > 42) throw bad('intero troppo grande')
     }
   }
   varbytes(max: number): Bytes {
@@ -163,15 +175,21 @@ function readAttestation(r: Reader): Attestation {
   const p = new Reader(payload)
   if (equal(tag, TAG_PENDING)) {
     const uri = new TextDecoder().decode(p.varbytes(MAX_URI))
+    if (!p.done) throw bad("dati in eccesso nell'attestazione")
     if (!/^[A-Za-z0-9.\-_/:]+$/.test(uri)) throw bad('URI del calendario non valido')
     return { kind: 'pending', uri }
   }
-  if (equal(tag, TAG_BITCOIN)) return { kind: 'bitcoin', height: p.varuint() }
+  if (equal(tag, TAG_BITCOIN)) {
+    const height = p.varuint()
+    if (!p.done) throw bad("dati in eccesso nell'attestazione")
+    return { kind: 'bitcoin', height }
+  }
   return { kind: 'unknown', tag, payload }
 }
 
 function readTimestamp(r: Reader, msg: Bytes, depth = 0): Timestamp {
   if (depth > 256) throw bad('struttura troppo profonda')
+  r.node(msg)
   const ts: Timestamp = { msg, attestations: [], ops: [] }
   const handle = (tag: number) => {
     if (tag === 0x00) {
