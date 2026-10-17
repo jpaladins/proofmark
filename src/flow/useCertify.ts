@@ -1,0 +1,91 @@
+import { useCallback, useRef, useState } from 'react'
+import { hashFile } from '@/core/hash/hashFile'
+import { stampHash } from '@/core/ots/ots'
+import { requestTimestamp } from '@/core/tsa/client'
+import type { TsaResult } from '@/core/tsa/rfc3161'
+import { CertifyError, runCertification, type CertifyDeps, type CertifyResult, type StepId, type StepState } from './certify'
+
+// pdf-lib, fontkit and the fonts are only needed at the last step: load them on demand.
+export const defaultCertifyDeps: CertifyDeps = {
+  hashFile,
+  requestTimestamp: (h) => requestTimestamp(h),
+  stampHash: (h) => stampHash(h),
+  renderAttestato: async (...args) => (await import('@/core/pdf/renderAttestato')).renderAttestato(...args),
+  sealPdf: async (...args) => (await import('@/core/pdf/pades')).sealPdf(...args),
+}
+
+const IDLE: Record<StepId, StepState> = {
+  hash: { status: 'idle' },
+  tsa: { status: 'idle' },
+  ots: { status: 'idle' },
+  cert: { status: 'idle' },
+}
+
+type Declared = { author?: string; title?: string }
+
+export function useCertify(deps: CertifyDeps = defaultCertifyDeps) {
+  const [steps, setSteps] = useState(IDLE)
+  const [result, setResult] = useState<CertifyResult>()
+  const [error, setError] = useState<string>()
+  const [running, setRunning] = useState(false)
+  const controller = useRef<AbortController | undefined>(undefined)
+  const last = useRef<{ file: File; declared?: Declared; resume: { sha256?: string; tsa?: TsaResult } } | undefined>(
+    undefined,
+  )
+
+  const run = useCallback(
+    async (file: File, declared: Declared | undefined, resume: { sha256?: string; tsa?: TsaResult }) => {
+      controller.current?.abort()
+      const ctrl = new AbortController()
+      controller.current = ctrl
+      last.current = { file, declared, resume }
+      setError(undefined)
+      setResult(undefined)
+      setRunning(true)
+      try {
+        const res = await runCertification(
+          { file, declared },
+          deps,
+          (id, s) => !ctrl.signal.aborted && setSteps((prev) => ({ ...prev, [id]: s })),
+          ctrl.signal,
+          resume,
+        )
+        if (!ctrl.signal.aborted) setResult(res)
+      } catch (err) {
+        if (ctrl.signal.aborted) return
+        if (err instanceof CertifyError) {
+          last.current = { file, declared, resume: err.resume }
+          setError(err.message)
+        } else {
+          setError('Si è verificato un errore imprevisto. Riprova.')
+        }
+      } finally {
+        if (!ctrl.signal.aborted) setRunning(false)
+      }
+    },
+    [deps],
+  )
+
+  const start = useCallback(
+    (file: File, declared?: Declared) => {
+      setSteps(IDLE)
+      void run(file, declared, {})
+    },
+    [run],
+  )
+
+  const retry = useCallback(() => {
+    if (last.current) void run(last.current.file, last.current.declared, last.current.resume)
+  }, [run])
+
+  const reset = useCallback(() => {
+    controller.current?.abort()
+    last.current = undefined
+    setSteps(IDLE)
+    setResult(undefined)
+    setError(undefined)
+    setRunning(false)
+  }, [])
+
+  return { steps, result, error, running, start, retry, reset }
+}
