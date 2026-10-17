@@ -11,11 +11,11 @@
 <p align="center">
   <a href="https://github.com/jpaladins/proofmark/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/jpaladins/proofmark/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="Licenza MIT" src="https://img.shields.io/badge/licenza-MIT-047857"></a>
-  <a href="https://proofmark.pages.dev"><img alt="Cloudflare Pages" src="https://img.shields.io/badge/deploy-Cloudflare%20Pages-1d4ed8"></a>
+  <a href="https://proofmark.jpaladins.ovh"><img alt="Cloudflare Pages" src="https://img.shields.io/badge/deploy-Cloudflare%20Pages-1d4ed8"></a>
   <img alt="Zero-Knowledge" src="https://img.shields.io/badge/zero--knowledge-il%20file%20non%20lascia%20il%20browser-142033">
 </p>
 
-<p align="center"><strong><a href="https://proofmark.pages.dev">Demo: proofmark.pages.dev</a></strong></p>
+<p align="center"><strong><a href="https://proofmark.jpaladins.ovh">Demo: proofmark.jpaladins.ovh</a></strong></p>
 
 ---
 

@@ -40,7 +40,7 @@ describe('buildCertificate', () => {
     expect(c.rfc3161.genTime).toBe(TSA.info.genTime.toISOString())
     expect(c.opentimestamps.status).toBe('pending')
     expect(c.opentimestamps.otsBase64).toBeTruthy()
-    expect(c.app.url).toBe('https://proofmark.pages.dev')
+    expect(c.app.url).toBe('https://proofmark.jpaladins.ovh')
     expect(c.id).toBe(makeCertificateId(HASH, TSA.info.genTime, 1))
   })
 
