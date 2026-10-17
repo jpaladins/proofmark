@@ -25,8 +25,8 @@ export type CertifyResult = {
 
 export type CertifyDeps = {
   hashFile: (file: File, onProgress: (p: HashProgress) => void, signal?: AbortSignal) => Promise<string>
-  requestTimestamp: (sha256Hex: string) => Promise<TsaResult>
-  stampHash: (sha256Hex: string) => Promise<Bytes>
+  requestTimestamp: (sha256Hex: string, signal?: AbortSignal) => Promise<TsaResult>
+  stampHash: (sha256Hex: string, signal?: AbortSignal) => Promise<Bytes>
   renderAttestato: (
     cert: Certificate,
     proofs: { tsr: Uint8Array; ots?: Uint8Array },
@@ -99,11 +99,12 @@ export async function runCertification(
   if (!tsa) {
     onStep('tsa', { status: 'active' })
     try {
-      tsa = await deps.requestTimestamp(sha256)
+      tsa = await deps.requestTimestamp(sha256, signal)
       // The relay→DigiCert hop is plain HTTP: accept only a token that verifies against the pinned root.
       const checks = await verifyTimestampToken(tsa.token, sha256)
       if (checks.some((c) => c.status !== 'ok')) throw new TsaError('malformed', 'Token DigiCert non valido.')
     } catch (err) {
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
       const message = err instanceof TsaError ? TSA_ERROR_COPY[err.code] : TSA_ERROR_COPY.network
       onStep('tsa', { status: 'error', message })
       throw new CertifyError('tsa', message, { sha256 })
@@ -116,7 +117,7 @@ export async function runCertification(
   onStep('ots', { status: 'active' })
   let ots: Bytes | undefined
   try {
-    ots = await deps.stampHash(sha256)
+    ots = await deps.stampHash(sha256, signal)
     onStep('ots', { status: 'done' })
   } catch {
     onStep('ots', { status: 'warn', message: OTS_UNAVAILABLE })
@@ -131,7 +132,8 @@ export async function runCertification(
   let pdf: Bytes
   let pdfSealed = true
   try {
-    pdf = await deps.sealPdf(await deps.renderAttestato(certificate, proofs, { sealed: true }), deps.requestTimestamp)
+    const seal = (h: string) => deps.requestTimestamp(h, signal)
+    pdf = await deps.sealPdf(await deps.renderAttestato(certificate, proofs, { sealed: true }), seal)
     onStep('cert', { status: 'done' })
   } catch {
     pdfSealed = false

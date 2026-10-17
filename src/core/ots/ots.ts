@@ -28,15 +28,19 @@ const ACCEPT = 'application/vnd.opentimestamps.v1'
 const TRUSTED_CALENDAR_HOSTS = [/\.opentimestamps\.org$/, /(^|\.)eternitywall\.com$/]
 
 export type OtsInfo = { digestHex: string; status: 'pending' | 'confirmed'; calendars: string[]; block?: number }
-type NetOpts = { fetchImpl?: typeof fetch; timeoutMs?: number }
+type NetOpts = { fetchImpl?: typeof fetch; timeoutMs?: number; signal?: AbortSignal }
 
-async function call(url: string, init: RequestInit, { fetchImpl = fetch, timeoutMs = 15_000 }: NetOpts) {
+async function call(url: string, init: RequestInit, { fetchImpl = fetch, timeoutMs = 15_000, signal }: NetOpts) {
+  signal?.throwIfAborted()
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const onAbort = () => controller.abort()
+  signal?.addEventListener('abort', onAbort)
   try {
     return await fetchImpl(url, { ...init, signal: controller.signal })
   } finally {
     clearTimeout(timer)
+    signal?.removeEventListener('abort', onAbort)
   }
 }
 
@@ -68,6 +72,7 @@ export async function stampHash(
       return parseTimestamp(new Uint8Array(await res.arrayBuffer()), commitment.msg)
     }),
   )
+  opts.signal?.throwIfAborted()
   let merged = 0
   for (const r of results) {
     if (r.status === 'fulfilled') {

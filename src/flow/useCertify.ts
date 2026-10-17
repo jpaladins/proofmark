@@ -8,8 +8,8 @@ import { CertifyError, runCertification, type CertifyDeps, type CertifyResult, t
 // pdf-lib, fontkit and the fonts are only needed at the last step: load them on demand.
 export const defaultCertifyDeps: CertifyDeps = {
   hashFile,
-  requestTimestamp: (h) => requestTimestamp(h),
-  stampHash: (h) => stampHash(h),
+  requestTimestamp: (h, signal) => requestTimestamp(h, { signal }),
+  stampHash: (h, signal) => stampHash(h, { signal }),
   renderAttestato: async (...args) => (await import('@/core/pdf/renderAttestato')).renderAttestato(...args),
   sealPdf: async (...args) => (await import('@/core/pdf/pades')).sealPdf(...args),
 }

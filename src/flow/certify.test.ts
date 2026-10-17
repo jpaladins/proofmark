@@ -98,6 +98,30 @@ describe('runCertification', () => {
     expect(deps.requestTimestamp).not.toHaveBeenCalled()
   })
 
+  test('passes the abort signal to the TSA and OTS clients', async () => {
+    const controller = new AbortController()
+    const deps = fakeDeps()
+    await runCertification({ file: zip() }, deps, () => {}, controller.signal)
+    expect(deps.requestTimestamp).toHaveBeenCalledWith(HASH, controller.signal)
+    expect(deps.stampHash).toHaveBeenCalledWith(HASH, controller.signal)
+  })
+
+  test('aborting during the TSA request rejects with AbortError, not a TSA error', async () => {
+    const controller = new AbortController()
+    const steps: StepId[] = []
+    const deps = fakeDeps({
+      requestTimestamp: vi.fn(async () => {
+        controller.abort()
+        throw new DOMException('Aborted', 'AbortError')
+      }),
+    })
+    await expect(
+      runCertification({ file: zip() }, deps, (id, s) => s.status === 'error' && steps.push(id), controller.signal),
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(steps).toEqual([])
+    expect(deps.stampHash).not.toHaveBeenCalled()
+  })
+
   test('resuming with a known hash skips hashing', async () => {
     const deps = fakeDeps()
     await runCertification({ file: zip() }, deps, () => {}, undefined, { sha256: HASH })
