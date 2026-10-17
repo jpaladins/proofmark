@@ -1,7 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react'
-
-const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(' ')
+import { cx } from '../cx'
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'ghost' }
 
@@ -33,16 +32,18 @@ export function Alert({
   title,
   children,
   action,
+  label,
 }: {
   tone: keyof typeof TONES
   title: string
   children?: ReactNode
   action?: ReactNode
+  label?: string
 }) {
   const t = TONES[tone]
   const Icon = t.icon
   return (
-    <div role={tone === 'danger' ? 'alert' : 'status'} className={cx('flex gap-3 rounded-lg border p-4', t.box)}>
+    <div role={tone === 'danger' ? 'alert' : 'status'} aria-label={label} className={cx('flex gap-3 rounded-lg border p-4', t.box)}>
       <Icon aria-hidden className={cx('mt-0.5 size-5 shrink-0', t.iconClass)} />
       <div className="min-w-0 flex-1 text-sm leading-relaxed">
         <p className="font-semibold">{title}</p>
@@ -68,5 +69,3 @@ export function Badge({ tone = 'muted', children }: { tone?: 'ok' | 'warn' | 'mu
     </span>
   )
 }
-
-export { cx }
