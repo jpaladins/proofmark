@@ -1,7 +1,11 @@
+import { Layout } from './ui/Layout'
+import { CertifyPage } from './ui/pages/CertifyPage'
+import { VerifyPage } from './ui/pages/VerifyPage'
+import { useRoute } from './ui/router'
+import { useTheme } from './ui/useTheme'
+
 export default function App() {
-  return (
-    <main className="min-h-dvh grid place-items-center">
-      <h1 className="text-2xl font-semibold">ProofMark</h1>
-    </main>
-  )
+  useTheme()
+  const { path } = useRoute()
+  return <Layout>{path === '/verifica' ? <VerifyPage /> : <CertifyPage />}</Layout>
 }
