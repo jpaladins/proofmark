@@ -14,6 +14,7 @@
     "favicon": "node scripts/make-favicon.mjs"
   },
   "dependencies": {
+    "hash-wasm": "^4.12.0",
     "lucide-react": "^1.59.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
