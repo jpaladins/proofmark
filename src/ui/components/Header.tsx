@@ -2,7 +2,7 @@ import { Moon, ShieldCheck, Sun } from 'lucide-react'
 import type { MouseEvent } from 'react'
 import { useRoute, type Path } from '../router'
 import { useTheme } from '../useTheme'
-import { cx } from './primitives'
+import { cx } from '../cx'
 
 export function Logo({ className }: { className?: string }) {
   return (
