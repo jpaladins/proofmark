@@ -66,7 +66,7 @@ export function Header() {
   const { navigate } = useRoute()
   return (
     <header className="border-b border-line bg-surface/80 backdrop-blur supports-[backdrop-filter]:bg-surface/70 sticky top-0 z-20">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex max-w-6xl items-center gap-x-3 px-4 py-3 sm:gap-x-6 sm:px-6">
         <a
           href="/"
           onClick={(e) => {
@@ -76,7 +76,8 @@ export function Header() {
           className="flex items-center gap-2.5"
         >
           <Logo className="size-8" />
-          <span className="font-serif text-lg font-semibold tracking-tight">ProofMark</span>
+          <span className="hidden font-serif text-lg font-semibold tracking-tight min-[400px]:inline">ProofMark</span>
+          <span className="sr-only min-[400px]:hidden">ProofMark</span>
         </a>
         <nav aria-label="Sezioni" className="flex items-center gap-1">
           <NavLink to="/">Certifica</NavLink>
@@ -86,6 +87,13 @@ export function Header() {
           <p className="hidden items-center gap-1.5 rounded-full border border-emerald/30 bg-emerald-soft px-3 py-1 text-xs font-medium text-emerald-ink md:flex">
             <ShieldCheck aria-hidden className="size-3.5" />
             <span>Zero-Knowledge: i file vengono elaborati solo nel tuo browser</span>
+          </p>
+          <p
+            className="flex items-center gap-1 whitespace-nowrap rounded-full border border-emerald/30 bg-emerald-soft px-2 py-1 text-xs font-medium text-emerald-ink md:hidden"
+            title="I file vengono elaborati solo nel tuo browser"
+          >
+            <ShieldCheck aria-hidden className="size-3.5" />
+            <span aria-hidden>Zero-Knowledge</span>
           </p>
           <ThemeToggle />
         </div>

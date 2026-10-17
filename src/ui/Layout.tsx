@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { APP_VERSION } from '@/core/app'
+import { APP_VERSION, REPO_URL } from '@/core/app'
 import { Header } from './components/Header'
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -20,7 +20,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <p>
             ProofMark {APP_VERSION}, open source con licenza MIT. Nessun dato personale raccolto, nessun cookie.
           </p>
-          <a className="underline-offset-4 hover:text-ink hover:underline" href="https://github.com/">
+          <a className="underline-offset-4 hover:text-ink hover:underline" href={REPO_URL}>
             Codice sorgente
           </a>
         </div>
