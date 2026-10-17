@@ -104,3 +104,13 @@ describe('runCertification', () => {
     expect(deps.hashFile).not.toHaveBeenCalled()
   })
 })
+
+test('rejects a DigiCert token whose signature does not verify', async () => {
+  const token = new Uint8Array(TSA.token)
+  token[token.length - 5] ^= 0x01
+  const rec = recorder()
+  const deps = fakeDeps({ requestTimestamp: vi.fn(async () => ({ ...TSA, token })) })
+  await expect(runCertification({ file: zip() }, deps, rec.onStep)).rejects.toMatchObject({ step: 'tsa' })
+  expect(rec.last.tsa).toMatchObject({ status: 'error', message: 'Risposta di DigiCert non valida. Riprova tra qualche istante.' })
+  expect(deps.renderAttestato).not.toHaveBeenCalled()
+})

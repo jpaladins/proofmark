@@ -67,3 +67,16 @@ test('the exact byte count is shown only when the size is abbreviated', () => {
   const c = buildAttestatoContent(pendingCert(), { sealed: true, attachments: ATTACH })
   expect(c.subject.rows[1]).toEqual({ label: 'Dimensione', value: '4 byte' })
 })
+
+test('the openssl command reads prova.tsr as a bare token', () => {
+  const code = buildAttestatoContent(pendingCert(), { sealed: true, attachments: ATTACH })
+    .verify.steps.flatMap((s) => s.code ?? [])
+    .join(' ')
+  expect(code).toContain('-in prova.tsr -token_in')
+})
+
+test('the eIDAS limit is stated about the public TSA service, not about DigiCert as a company', () => {
+  const limits = JSON.stringify(buildAttestatoContent(pendingCert(), { sealed: true, attachments: ATTACH }).limits)
+  expect(limits).toContain('timestamp.digicert.com')
+  expect(limits).not.toContain('che non è un prestatore qualificato')
+})

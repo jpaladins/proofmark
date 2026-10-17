@@ -420,7 +420,7 @@ export async function renderAttestato(
 
   const json = new TextEncoder().encode(serializeCertificate(cert))
   const files = [
-    { name: 'prova.tsr', bytes: proofs.tsr, mime: 'application/timestamp-reply', description: 'Token di marca temporale RFC 3161' },
+    { name: 'prova.tsr', bytes: proofs.tsr, mime: 'application/pkcs7-mime', description: 'Token di marca temporale RFC 3161 (usa openssl ts -token_in)' },
     ...(proofs.ots
       ? [{ name: 'prova.ots', bytes: proofs.ots, mime: 'application/vnd.opentimestamps.v1', description: 'Prova OpenTimestamps' }]
       : []),

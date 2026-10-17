@@ -5,8 +5,7 @@ import * as asn1js from 'asn1js'
 import { PDFArray, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFString } from 'pdf-lib'
 import { bytesToHex, hexToBytes, type Bytes } from '@/core/hash/sha256'
 import { parseTimeStampToken } from '@/core/tsa/rfc3161'
-import type { Check } from '@/core/verify/verifyToken'
-import { verifyTimestampToken } from '@/core/verify/verifyToken'
+import { verifyTimestampToken, type Check } from '@/core/verify/verifyToken'
 
 const CONTENTS_BYTES = 16_384
 const CONTENTS_HEX = CONTENTS_BYTES * 2
@@ -29,6 +28,7 @@ async function sha256Hex(...parts: Uint8Array[]): Promise<string> {
 export async function sealPdf(
   doc: PDFDocument,
   timestamp: (sha256Hex: string) => Promise<{ token: Uint8Array }>,
+  opts: { trustPem?: string } = {},
 ): Promise<Bytes> {
   const ctx = doc.context
   const byteRange = PDFArray.withContext(ctx)
@@ -69,7 +69,10 @@ export async function sealPdf(
   if (range.length > BYTE_RANGE_PLACEHOLDER.length) throw new Error('ByteRange troppo lungo.')
   pdf.set(ascii(range.padEnd(BYTE_RANGE_PLACEHOLDER.length, ' ')), rangeAt)
 
-  const { token } = await timestamp(await sha256Hex(pdf.subarray(0, a), pdf.subarray(b)))
+  const covered = await sha256Hex(pdf.subarray(0, a), pdf.subarray(b))
+  const { token } = await timestamp(covered)
+  const checks = await verifyTimestampToken(new Uint8Array(token), covered, opts)
+  if (checks.some((c) => c.status !== 'ok')) throw new Error('Il token del sigillo non è valido.')
   const tokenHex = bytesToHex(token).toUpperCase()
   if (tokenHex.length > CONTENTS_HEX) throw new Error('Token di marca temporale troppo grande per il sigillo.')
   pdf.set(ascii(tokenHex.padEnd(CONTENTS_HEX, '0')), a + 1)
