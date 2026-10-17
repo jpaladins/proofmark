@@ -14,8 +14,8 @@ describe('stampHash', () => {
     const fetchImpl = (async (url: string, init?: RequestInit) => {
       urls.push(url)
       expect(init?.method).toBe('POST')
-      expect((init?.body as Uint8Array).length).toBe(32)
-      expect(new Uint8Array(init?.body as Uint8Array)).not.toEqual(Uint8Array.from(Buffer.from(HASH, 'hex')))
+      expect((init!.body as Uint8Array).length).toBe(32)
+      expect(new Uint8Array(init!.body as Uint8Array)).not.toEqual(Uint8Array.from(Buffer.from(HASH, 'hex')))
       return okResponse(fixture('calendar-response.bin'))
     }) as typeof fetch
     const ots = await stampHash(HASH, { fetchImpl })
