@@ -1,6 +1,6 @@
 import * as asn1js from 'asn1js'
 import * as pkijs from 'pkijs'
-import { bytesToHex, hexToBytes } from '@/core/hash/sha256'
+import { bytesToHex, hexToBytes, type Bytes } from '@/core/hash/sha256'
 import '@/core/trust'
 
 export const SHA256_OID = '2.16.840.1.101.3.4.2.1'
@@ -34,7 +34,7 @@ export type TokenInfo = {
   hashAlg: string
 }
 
-export type TsaResult = { token: Uint8Array; info: TokenInfo }
+export type TsaResult = { token: Bytes; info: TokenInfo }
 
 export function randomNonce(): bigint {
   const bytes = crypto.getRandomValues(new Uint8Array(8))
@@ -43,7 +43,7 @@ export function randomNonce(): bigint {
   return BigInt('0x' + bytesToHex(bytes))
 }
 
-export function buildTimeStampReq(sha256Hex: string, nonce: bigint): Uint8Array {
+export function buildTimeStampReq(sha256Hex: string, nonce: bigint): Bytes {
   const req = new pkijs.TimeStampReq({
     version: 1,
     messageImprint: new pkijs.MessageImprint({
@@ -56,7 +56,7 @@ export function buildTimeStampReq(sha256Hex: string, nonce: bigint): Uint8Array 
   return new Uint8Array(req.toSchema().toBER())
 }
 
-export function parseTimeStampResp(der: Uint8Array): TsaResult {
+export function parseTimeStampResp(der: Bytes): TsaResult {
   let resp: pkijs.TimeStampResp
   try {
     resp = pkijs.TimeStampResp.fromBER(der)
@@ -73,7 +73,7 @@ export function parseTimeStampResp(der: Uint8Array): TsaResult {
 }
 
 /** Reads TSTInfo and the signer's common name from a TimeStampToken (CMS SignedData). */
-export function parseTimeStampToken(token: Uint8Array): TokenInfo {
+export function parseTimeStampToken(token: Bytes): TokenInfo {
   try {
     const signed = signedDataOf(token)
     const tst = tstInfoOf(signed)
@@ -93,7 +93,7 @@ export function parseTimeStampToken(token: Uint8Array): TokenInfo {
   }
 }
 
-export function signedDataOf(token: Uint8Array): pkijs.SignedData {
+export function signedDataOf(token: Bytes): pkijs.SignedData {
   const info = pkijs.ContentInfo.fromBER(token)
   if (info.contentType !== ID_SIGNED_DATA) throw new TsaError('malformed', 'Il token non è un SignedData CMS.')
   return new pkijs.SignedData({ schema: info.content })

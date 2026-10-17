@@ -1,5 +1,8 @@
 import { createSHA256 } from 'hash-wasm'
 
+/** Byte arrays backed by a plain ArrayBuffer (what WebCrypto and pkijs accept). */
+export type Bytes = Uint8Array<ArrayBuffer>
+
 export const DEFAULT_CHUNK_SIZE = 16 * 1024 * 1024
 
 /** Streams a Blob through SHA-256 chunk by chunk; memory use is bounded by chunkSize. */
@@ -25,7 +28,7 @@ export function bytesToHex(bytes: Uint8Array): string {
   return out
 }
 
-export function hexToBytes(hex: string): Uint8Array {
+export function hexToBytes(hex: string): Bytes {
   if (hex.length % 2 !== 0 || /[^0-9a-f]/i.test(hex)) throw new Error('Invalid hex string')
   const out = new Uint8Array(hex.length / 2)
   for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
