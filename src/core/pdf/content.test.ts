@@ -103,3 +103,18 @@ test('the brand line credits the developer in small capitals', () => {
   expect(receipt().brandCredit).toBe('BY JPALADINS')
   expect(attestation().brandCredit).toBe('BY JPALADINS')
 })
+
+describe('hero date of the attestation', () => {
+  test('splits the attested moment into a prominent date and time', () => {
+    expect(attestation().hero.stamp).toEqual({
+      kicker: 'Esistenza attestata al',
+      date: '28 maggio 2015',
+      time: '15:41:18 UTC',
+      note: '17:41:18 ora italiana',
+    })
+  })
+
+  test('the receipt highlights no date', () => {
+    expect(receipt().hero.stamp).toBeUndefined()
+  })
+})
