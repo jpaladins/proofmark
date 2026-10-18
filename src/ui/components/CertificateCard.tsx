@@ -1,13 +1,14 @@
 import { CalendarPlus, Download, FileJson, FileText, RotateCcw } from 'lucide-react'
 import { formatBytes, PENDING_REMINDER } from '@/core/pdf/content'
 import type { CertifyResult } from '@/flow/certify'
+import { utcOffset } from '@/core/time'
 import { buildReminderIcs } from '../ics'
 import { baseName, downloadBytes } from '../download'
 import { Alert, Badge, Button } from './primitives'
 import { CopyButton, Fingerprint } from './Fingerprint'
 
 const fmtDateTime = (iso: string) =>
-  new Intl.DateTimeFormat('it-IT', { dateStyle: 'long', timeStyle: 'medium' }).format(new Date(iso))
+  `${new Intl.DateTimeFormat('it-IT', { dateStyle: 'long', timeStyle: 'medium' }).format(new Date(iso))} ${utcOffset(new Date(iso))}`
 const fmtTime = (d: Date) => new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' }).format(d)
 
 export function PendingBanner({ at, certId, fileName }: { at: Date; certId: string; fileName: string }) {

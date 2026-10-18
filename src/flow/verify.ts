@@ -15,6 +15,7 @@ import { OtsError } from '@/core/ots/format'
 import { inspectOts, upgradeOts, verifyOtsOnline, type OtsInfo } from '@/core/ots/ots'
 import type { FontBytes } from '@/core/pdf/fonts'
 import type { Check } from '@/core/verify/check'
+import { utcOffset } from '@/core/time'
 
 export type Evidence = { cert: Certificate; ots: Bytes; pdf?: Bytes }
 
@@ -27,7 +28,8 @@ export class EvidenceError extends Error {
   }
 }
 
-const fmtDate = (d: Date) => new Intl.DateTimeFormat('it-IT', { dateStyle: 'long', timeStyle: 'short' }).format(d)
+const fmtDate = (d: Date) =>
+  `${new Intl.DateTimeFormat('it-IT', { dateStyle: 'long', timeStyle: 'short' }).format(d)} ${utcOffset(d)}`
 
 function parseOrThrow(json: string): Certificate {
   try {

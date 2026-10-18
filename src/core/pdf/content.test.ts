@@ -5,9 +5,11 @@ import { buildAttestatoContent, groupHash, type AttestatoContent } from './conte
 
 const ATTACH = [{ name: 'prova.ots', size: 1032 }]
 const allText = (c: AttestatoContent) => JSON.stringify(c)
+// Times follow the device's time zone; tests pin one so they pass on any machine (CI runs in UTC).
+const TZ = 'Europe/Rome'
 const receipt = (declared?: { author?: string; title?: string }) =>
-  buildAttestatoContent(pendingCert(declared), { attachments: ATTACH })
-const attestation = () => buildAttestatoContent(confirmedCert(), { attachments: ATTACH })
+  buildAttestatoContent(pendingCert(declared), { attachments: ATTACH, timeZone: TZ })
+const attestation = (timeZone = TZ) => buildAttestatoContent(confirmedCert(), { attachments: ATTACH, timeZone })
 
 describe('receipt (ricevuta)', () => {
   test('is titled as a receipt and never claims an attested date', () => {
@@ -110,11 +112,37 @@ describe('hero date of the attestation', () => {
       kicker: 'Esistenza attestata al',
       date: '28 maggio 2015',
       time: '15:41:18 UTC',
-      note: '17:41:18 ora italiana',
+      note: '17:41:18 UTC+2',
     })
   })
 
   test('the receipt highlights no date', () => {
     expect(receipt().hero.stamp).toBeUndefined()
+  })
+})
+
+describe('local time zone instead of a fixed Italian time', () => {
+  test('the attested moment is also shown in the device time zone with its UTC offset', () => {
+    expect(attestation('America/New_York').hero.stamp?.note).toBe('11:41:18 UTC-4')
+    expect(attestation('Asia/Kolkata').hero.stamp?.note).toBe('21:11:18 UTC+5:30')
+  })
+
+  test('no second time is shown when the device is on UTC', () => {
+    expect(attestation('UTC').hero.stamp?.note).toBeUndefined()
+  })
+
+  test('issue date, request time and block time carry the offset', () => {
+    const c = attestation()
+    expect(c.issued).toMatch(/\(UTC\+[12]\)$/)
+    expect(c.bitcoin.rows.find((r) => r.label === 'Data del blocco')?.note).toBe('(17:41:18 UTC+2)')
+    expect(c.bitcoin.rows.find((r) => r.label === 'Richiesta inviata il')?.value).toBe('18/10/2026 alle 12:32:15 UTC+2')
+  })
+
+  test('never mentions a fixed Italian time zone', () => {
+    for (const c of [receipt(), attestation(), attestation('America/New_York')]) {
+      const text = allText(c)
+      expect(text).not.toContain('ora italiana')
+      expect(text).not.toContain('Europe/Rome')
+    }
   })
 })
