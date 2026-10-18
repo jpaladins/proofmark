@@ -38,7 +38,7 @@ function NavLink({ to, children }: { to: Path; children: string }) {
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
       className={cx(
-        'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+        'rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3',
         active ? 'bg-sunken text-ink' : 'text-muted hover:text-ink',
       )}
     >
@@ -55,7 +55,7 @@ export function ThemeToggle() {
       type="button"
       onClick={() => setTheme(next)}
       aria-label={next === 'dark' ? 'Passa al tema scuro' : 'Passa al tema chiaro'}
-      className="grid size-9 place-items-center rounded-md text-muted transition-colors hover:bg-sunken hover:text-ink"
+      className="grid size-9 shrink-0 place-items-center rounded-md text-muted transition-colors hover:bg-sunken hover:text-ink"
     >
       {resolved === 'dark' ? <Sun aria-hidden className="size-4.5" /> : <Moon aria-hidden className="size-4.5" />}
     </button>
@@ -66,34 +66,38 @@ export function Header() {
   const { navigate } = useRoute()
   return (
     <header className="border-b border-line bg-surface/80 backdrop-blur supports-[backdrop-filter]:bg-surface/70 sticky top-0 z-20">
-      <div className="mx-auto flex max-w-6xl items-center gap-x-3 px-4 py-3 sm:gap-x-6 sm:px-6">
+      <div className="mx-auto flex max-w-6xl items-center gap-x-2 px-4 py-3 sm:gap-x-6 sm:px-6">
         <a
           href={toUrl('/')}
           onClick={(e) => {
             e.preventDefault()
             navigate('/')
           }}
-          className="flex items-center gap-2.5"
+          className="flex shrink-0 items-center gap-2.5"
         >
           <Logo className="size-8" />
-          <span className="hidden font-serif text-lg font-semibold tracking-tight min-[400px]:inline">ProofMark</span>
-          <span className="sr-only min-[400px]:hidden">ProofMark</span>
+          <span className="hidden font-serif text-lg font-semibold tracking-tight min-[420px]:inline">ProofMark</span>
+          <span className="sr-only min-[420px]:hidden">ProofMark</span>
         </a>
-        <nav aria-label="Sezioni" className="flex items-center gap-1">
+        <nav aria-label="Sezioni" className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           <NavLink to="/">Certifica</NavLink>
           <NavLink to="/verifica">Verifica</NavLink>
         </nav>
-        <div className="ml-auto flex items-center gap-2">
-          <p className="hidden items-center gap-1.5 rounded-full border border-emerald/30 bg-emerald-soft px-3 py-1 text-xs font-medium text-emerald-ink md:flex">
+        <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
+          <p className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-emerald/30 bg-emerald-soft px-3 py-1 text-xs font-medium text-emerald-ink lg:flex">
             <ShieldCheck aria-hidden className="size-3.5" />
             <span>Zero-Knowledge: i file vengono elaborati solo nel tuo browser</span>
           </p>
+          {/* Below 640px only the shield, so the bar fits a 320px phone; the short label up to 1024px, then the full one. */}
           <p
-            className="flex items-center gap-1 whitespace-nowrap rounded-full border border-emerald/30 bg-emerald-soft px-2 py-1 text-xs font-medium text-emerald-ink md:hidden"
-            title="I file vengono elaborati solo nel tuo browser"
+            className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-emerald/30 bg-emerald-soft px-1.5 py-1 text-xs font-medium text-emerald-ink sm:px-2 lg:hidden"
+            title="Zero-Knowledge: i file vengono elaborati solo nel tuo browser"
           >
             <ShieldCheck aria-hidden className="size-3.5" />
-            <span aria-hidden>Zero-Knowledge</span>
+            <span aria-hidden className="hidden sm:inline">
+              Zero-Knowledge
+            </span>
+            <span className="sr-only">Zero-Knowledge</span>
           </p>
           <ThemeToggle />
         </div>
