@@ -41,7 +41,6 @@ export function Stepper({ steps }: { steps: Record<StepId, StepState> }) {
     <ol className="grid gap-3 sm:grid-cols-3 sm:gap-0" aria-label="Avanzamento della certificazione">
       {ORDER.map((id, i) => {
         const s = steps[id]
-        const progress = id === 'hash' && s.status === 'active' ? s.progress : undefined
         return (
           <li
             key={id}
@@ -66,18 +65,6 @@ export function Stepper({ steps }: { steps: Record<StepId, StepState> }) {
               <p className={cx('mt-0.5 text-xs', s.status === 'error' ? 'text-red' : s.status === 'warn' ? 'text-amber' : 'text-muted')}>
                 {s.message ?? IDLE_HINT[id]}
               </p>
-              {progress !== undefined && (
-                <div
-                  className="mt-2 h-1 w-full overflow-hidden rounded-full bg-sunken"
-                  role="progressbar"
-                  aria-label="Calcolo dell'impronta"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={Math.round(progress * 100)}
-                >
-                  <div className="h-full bg-blue transition-[width]" style={{ width: `${progress * 100}%` }} />
-                </div>
-              )}
             </div>
           </li>
         )
