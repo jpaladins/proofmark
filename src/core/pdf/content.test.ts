@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import { confirmedCert, pendingCert } from '@/test/certFixtures'
 import { buildAttestatoContent, groupHash, type AttestatoContent } from './content'
 
-const ATTACH = [{ name: 'prova.ots', size: 1032 }]
+const ATTACH = [{ name: 'le-stagioni-del-vetro_v3.ots', size: 1032 }]
 const allText = (c: AttestatoContent) => JSON.stringify(c)
 // Times follow the device's time zone; tests pin one so they pass on any machine (CI runs in UTC).
 const TZ = 'Europe/Rome'
@@ -35,7 +35,7 @@ describe('receipt (ricevuta)', () => {
 
   test('tells the user to upgrade the proof before verifying it', () => {
     const code = receipt().verify.steps.flatMap((s) => s.code ?? []).join(' ')
-    expect(code).toContain('ots upgrade prova.ots')
+    expect(code).toContain('ots upgrade "le-stagioni-del-vetro_v3.ots"')
   })
 })
 
@@ -80,7 +80,7 @@ describe('both documents', () => {
   })
 
   test('the footer points to the attached OpenTimestamps proof', () => {
-    expect(receipt().footer[0]).toContain('prova.ots')
+    expect(receipt().footer[0]).toContain('file .ots allegato')
   })
 
   test('verification commands use the real file name', () => {
@@ -89,7 +89,7 @@ describe('both documents', () => {
       .verify.steps.flatMap((s) => s.code ?? [])
       .join('\n')
     expect(code).toContain(`certutil -hashfile "${cert.file.name}" SHA256`)
-    expect(code).toContain(`ots verify prova.ots -f "${cert.file.name}"`)
+    expect(code).toContain(`ots verify "le-stagioni-del-vetro_v3.ots" -f "${cert.file.name}"`)
   })
 
   test('the exact byte count is shown only when the size is abbreviated', () => {
@@ -144,6 +144,26 @@ describe('local time zone instead of a fixed Italian time', () => {
       const text = allText(c)
       expect(text).not.toContain('ora italiana')
       expect(text).not.toContain('Europe/Rome')
+    }
+  })
+})
+
+describe('file names match the downloaded files', () => {
+  test('commands, warnings and footer use the archive-based names', () => {
+    const cert = pendingCert()
+    const c = buildAttestatoContent(cert, { attachments: ATTACH, timeZone: TZ })
+    const code = c.verify.steps.flatMap((s) => s.code ?? []).join(' ')
+    expect(code).toContain('ots upgrade "le-stagioni-del-vetro_v3.ots"')
+    expect(code).toContain(`ots verify "le-stagioni-del-vetro_v3.ots" -f "${cert.file.name}"`)
+    expect(c.verify.attachments[0]).toContain('le-stagioni-del-vetro_v3.ots')
+    expect(c.warnings.bullets.join(' ')).toContain("file .ots con lo stesso nome dell'archivio")
+  })
+
+  test('the old generic names no longer appear', () => {
+    for (const c of [receipt(), attestation()]) {
+      const text = allText(c)
+      expect(text).not.toContain('prova.ots')
+      expect(text).not.toContain('certificato.json')
     }
   })
 })

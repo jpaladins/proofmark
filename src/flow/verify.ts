@@ -54,11 +54,16 @@ export async function loadEvidence(file: File): Promise<Evidence> {
     } catch {
       throw new EvidenceError('format', 'Il PDF non è leggibile.')
     }
-    if (!files['prova.ots'] || !files['certificato.json']) {
-      throw new EvidenceError('missing', 'Questo PDF non contiene le prove di ProofMark (prova.ots e certificato.json).')
+    // Attachments are named after the archive (e.g. "opera.ots"); PDFs issued before that used
+    // "prova.ots" and "certificato.json", so pick them by extension.
+    const names = Object.keys(files)
+    const otsName = names.find((n) => n.toLowerCase().endsWith('.ots'))
+    const jsonName = names.find((n) => n.toLowerCase().endsWith('.json'))
+    if (!otsName || !jsonName) {
+      throw new EvidenceError('missing', 'Questo PDF non contiene le prove di ProofMark (file .ots e certificato JSON).')
     }
-    const cert = parseOrThrow(new TextDecoder().decode(files['certificato.json']))
-    return { cert, ots: files['prova.ots'], pdf }
+    const cert = parseOrThrow(new TextDecoder().decode(files[jsonName]))
+    return { cert, ots: files[otsName], pdf }
   }
   throw new EvidenceError('format', "Carica la ricevuta, l'attestato PDF o il certificato JSON di ProofMark.")
 }
