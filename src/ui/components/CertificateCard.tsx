@@ -1,6 +1,5 @@
 import { CalendarPlus, Download, FileJson, FileText, RotateCcw } from 'lucide-react'
-import { PENDING_REMINDER } from '@/core/pdf/content'
-import { formatBytes } from '@/core/pdf/content'
+import { formatBytes, PENDING_REMINDER } from '@/core/pdf/content'
 import type { CertifyResult } from '@/flow/certify'
 import { buildReminderIcs } from '../ics'
 import { baseName, downloadBytes } from '../download'
@@ -16,7 +15,7 @@ export function PendingBanner({ at, certId, fileName }: { at: Date; certId: stri
     <Alert
       tone="info"
       label="Conferma Bitcoin in arrivo"
-      title={`Conferma Bitcoin: torna dopo le ${fmtTime(at)} circa`}
+      title={`Per l'attestato con la data torna dopo le ${fmtTime(at)} circa`}
       action={
         <Button
           variant="secondary"
@@ -29,7 +28,7 @@ export function PendingBanner({ at, certId, fileName }: { at: Date; certId: stri
         </Button>
       }
     >
-      {PENDING_REMINDER.replace('questo PDF', "l'attestato PDF")}
+      {PENDING_REMINDER}
     </Alert>
   )
 }
@@ -43,44 +42,39 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
   )
 }
 
+/** Result of a certification run: the receipt. The attestation comes later, from the Verify page. */
 export function CertificateCard({ result, onReset }: { result: CertifyResult; onReset: () => void }) {
   const { certificate: c } = result
   const base = baseName(c.file.name)
-  const ots = c.opentimestamps
   const downloads = [
     {
-      label: 'Scarica attestato PDF',
+      label: 'Scarica ricevuta PDF',
       icon: FileText,
       primary: true,
-      run: () => downloadBytes(result.pdf, `${base}_attestato.pdf`, 'application/pdf'),
+      run: () => downloadBytes(result.pdf, `${base}_ricevuta.pdf`, 'application/pdf'),
     },
     {
-      label: 'Scarica certificato JSON',
+      label: 'Scarica ricevuta JSON',
       icon: FileJson,
-      run: () => downloadBytes(result.json, `${base}_certificato.json`, 'application/json'),
+      run: () => downloadBytes(result.json, `${base}_ricevuta.json`, 'application/json'),
     },
     {
-      label: 'Scarica prova DigiCert (.tsr)',
+      label: 'Scarica prova Bitcoin (.ots)',
       icon: Download,
-      run: () => downloadBytes(result.tsr, `${base}.tsr`, 'application/timestamp-reply'),
+      run: () => downloadBytes(result.ots, `${base}.ots`, 'application/vnd.opentimestamps.v1'),
     },
-    ...(result.ots
-      ? [
-          {
-            label: 'Scarica prova Bitcoin (.ots)',
-            icon: Download,
-            run: () => downloadBytes(result.ots!, `${base}.ots`, 'application/vnd.opentimestamps.v1'),
-          },
-        ]
-      : []),
   ]
 
   return (
-    <section aria-label="Certificato generato" className="[animation:pm-reveal_.45s_ease-out_both]">
+    <section aria-label="Ricevuta generata" className="[animation:pm-reveal_.45s_ease-out_both]">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 className="font-serif text-2xl font-semibold tracking-tight">Il tuo archivio è certificato</h2>
+        <h2 className="font-serif text-2xl font-semibold tracking-tight">Registrazione inviata alla blockchain</h2>
         <p className="font-mono text-sm text-muted">{c.id}</p>
       </div>
+      <p className="mt-3 max-w-[62ch] text-ink-2">
+        Hai la ricevuta. La data di esistenza verrà dal blocco Bitcoin che conterrà la prova, di solito entro qualche ora:
+        a quel punto potrai scaricare l'attestato dalla pagina Verifica.
+      </p>
 
       <div className="mt-6 rounded-xl border border-line bg-surface p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
@@ -99,16 +93,13 @@ export function CertificateCard({ result, onReset }: { result: CertifyResult; on
           </Fact>
           {c.declared?.author && <Fact label="Autore (dichiarato)">{c.declared.author}</Fact>}
           {c.declared?.title && <Fact label="Titolo (dichiarato)">{c.declared.title}</Fact>}
-          <Fact label="Marca DigiCert">
-            <span className="flex flex-wrap items-center gap-2">
-              {fmtDateTime(c.rfc3161.genTime)} <Badge tone="ok">Valida</Badge>
-            </span>
-            <span className="mt-0.5 block text-muted">{c.rfc3161.tsa}</span>
+          <Fact label="Richiesta inviata">
+            {fmtDateTime(c.requestedAt)}
+            <span className="mt-0.5 block text-muted">Orologio del tuo dispositivo, non certificato</span>
           </Fact>
           <Fact label="Ancoraggio Bitcoin">
-            {ots.status === 'pending' && <Badge tone="warn">In attesa di conferma</Badge>}
-            {ots.status === 'confirmed' && <Badge tone="ok">Confermato nel blocco #{ots.block}</Badge>}
-            {ots.status === 'unavailable' && <Badge tone="muted">Non disponibile</Badge>}
+            <Badge tone="warn">In attesa di conferma</Badge>
+            <span className="mt-1 block text-muted">{c.opentimestamps.calendars.length} calendari OpenTimestamps</span>
           </Fact>
         </dl>
 
@@ -127,16 +118,10 @@ export function CertificateCard({ result, onReset }: { result: CertifyResult; on
       </div>
 
       <div className="mt-8 grid gap-3">
-        {result.reminderAfter && <PendingBanner at={result.reminderAfter} certId={c.id} fileName={c.file.name} />}
-        {!result.pdfSealed && (
-          <Alert tone="warning" title="Attestato senza sigillo sul documento">
-            La marca DigiCert sull'archivio è valida, ma il sigillo sul PDF non è riuscito. Puoi certificare di nuovo più
-            tardi per ottenere un PDF sigillato.
-          </Alert>
-        )}
+        <PendingBanner at={result.reminderAfter} certId={c.id} fileName={c.file.name} />
         <Alert tone="warning" title="Conserva l'archivio esattamente com'è.">
-          Se estrai i file e li ricomprimi, anche senza modificarli, l'impronta cambia e l'attestato non sarà più
-          riconducibile all'archivio. Tieni insieme lo .zip originale, il PDF e la prova .ots.
+          Se estrai i file e li ricomprimi, anche senza modificarli, l'impronta cambia e la prova non sarà più
+          riconducibile all'archivio. Tieni insieme lo .zip originale, la ricevuta e la prova .ots.
         </Alert>
       </div>
     </section>

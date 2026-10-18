@@ -1,22 +1,17 @@
 import { useCallback, useRef, useState } from 'react'
 import { hashFile } from '@/core/hash/hashFile'
 import { stampHash } from '@/core/ots/ots'
-import { requestTimestamp } from '@/core/tsa/client'
-import type { TsaResult } from '@/core/tsa/rfc3161'
 import { CertifyError, runCertification, type CertifyDeps, type CertifyResult, type StepId, type StepState } from './certify'
 
 // pdf-lib, fontkit and the fonts are only needed at the last step: load them on demand.
 export const defaultCertifyDeps: CertifyDeps = {
   hashFile,
-  requestTimestamp: (h, signal) => requestTimestamp(h, { signal }),
   stampHash: (h, signal) => stampHash(h, { signal }),
   renderAttestato: async (...args) => (await import('@/core/pdf/renderAttestato')).renderAttestato(...args),
-  sealPdf: async (...args) => (await import('@/core/pdf/pades')).sealPdf(...args),
 }
 
 const IDLE: Record<StepId, StepState> = {
   hash: { status: 'idle' },
-  tsa: { status: 'idle' },
   ots: { status: 'idle' },
   cert: { status: 'idle' },
 }
@@ -29,12 +24,12 @@ export function useCertify(deps: CertifyDeps = defaultCertifyDeps) {
   const [error, setError] = useState<string>()
   const [running, setRunning] = useState(false)
   const controller = useRef<AbortController | undefined>(undefined)
-  const last = useRef<{ file: File; declared?: Declared; resume: { sha256?: string; tsa?: TsaResult } } | undefined>(
+  const last = useRef<{ file: File; declared?: Declared; resume: { sha256?: string } } | undefined>(
     undefined,
   )
 
   const run = useCallback(
-    async (file: File, declared: Declared | undefined, resume: { sha256?: string; tsa?: TsaResult }) => {
+    async (file: File, declared: Declared | undefined, resume: { sha256?: string }) => {
       controller.current?.abort()
       const ctrl = new AbortController()
       controller.current = ctrl

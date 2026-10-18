@@ -1,5 +1,5 @@
 import { AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'
-import type { Check } from '@/core/verify/verifyToken'
+import type { Check } from '@/core/verify/check'
 import { cx } from '../cx'
 
 const STATUS = {

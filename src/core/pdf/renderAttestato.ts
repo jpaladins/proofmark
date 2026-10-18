@@ -17,7 +17,7 @@ import {
   type RGB,
 } from 'pdf-lib'
 import QRCode from 'qrcode'
-import { APP_HOST, APP_VERSION, VERIFY_URL } from '@/core/app'
+import { APP_URL, APP_VERSION, VERIFY_URL } from '@/core/app'
 import type { Bytes } from '@/core/hash/sha256'
 import { serializeCertificate, type Certificate } from '@/core/cert/certificate'
 import { buildAttestatoContent, type AttestatoContent, type Pill, type Row } from './content'
@@ -249,7 +249,7 @@ function drawFooter(pen: Pen, left: string, page: number) {
   pen.hline(M, W - M, y + 12)
   drawLock(pen, M, y)
   pen.text(left, M + 12, y, pen.f.sans, 7, C.ink2)
-  pen.textRight(`${APP_HOST} · Pagina ${page} di 2`, W - M, y, pen.f.sans, 7, C.muted)
+  pen.textRight(`${APP_URL.replace(/^https:\/\//, '')} · Pagina ${page} di 2`, W - M, y, pen.f.sans, 7, C.muted)
 }
 
 /** Draws page 1 and returns the lowest y its content reaches. */
@@ -262,7 +262,7 @@ function drawPage1(pen: Pen, c: AttestatoContent, sha256: string, d = NORMAL): n
   drawLogo(pen, M, y, 30)
   pen.text('ProofMark', M + 38, y - 13, f.sansSemiBold, 14, C.ink)
   pen.text('PROVA DI ESISTENZA DIGITALE', M + 38, y - 24, f.sans, 6.5, C.muted)
-  pen.textRight('Attestato n.', W - M, y - 7, f.sans, 7.5, C.muted)
+  pen.textRight(c.docLabel, W - M, y - 7, f.sans, 7.5, C.muted)
   pen.textRight(c.id, W - M, y - 18, f.monoMedium, 9, C.ink)
   pen.textRight(c.issued, W - M, y - 28, f.sans, 7.5, C.muted)
   y -= 36
@@ -282,17 +282,17 @@ function drawPage1(pen: Pen, c: AttestatoContent, sha256: string, d = NORMAL): n
     qrBox,
     16 + pen.wrap(c.hero.heading, f.sansSemiBold, 10.5, heroTextW).length * 14 + pen.wrap(c.hero.body, f.sans, 9, heroTextW).length * 12.8,
   )
-  pen.roundRect(M, y, heroW, heroH, 6, C.emeraldSoft, C.emeraldBorder)
-  pen.page.drawSvgPath('M 12 22 C 12 22 20 18 20 12 V 5 L 12 2 L 4 5 V 12 C 4 18 12 22 12 22 Z M 9 12 L 11 14 L 15 10', {
-    x: M + 10,
-    y: y - 10,
-    scale: 1.15,
-    borderColor: C.emerald,
-    borderWidth: 1.8,
-  })
+  const hero =
+    c.tone === 'confirmed'
+      ? { fill: C.emeraldSoft, border: C.emeraldBorder, ink: C.emeraldText, icon: C.emerald,
+          path: 'M 12 22 C 12 22 20 18 20 12 V 5 L 12 2 L 4 5 V 12 C 4 18 12 22 12 22 Z M 9 12 L 11 14 L 15 10' }
+      : { fill: C.amberSoft, border: C.amberBorder, ink: C.amberText, icon: C.amber,
+          path: 'M 12 2 A 10 10 0 1 0 12.01 2 Z M 12 6 V 12 L 16 14' }
+  pen.roundRect(M, y, heroW, heroH, 6, hero.fill, hero.border)
+  pen.page.drawSvgPath(hero.path, { x: M + 10, y: y - 10, scale: 1.15, borderColor: hero.icon, borderWidth: 1.8 })
   let hy = y - 10
-  hy -= pen.para(c.hero.heading, textX, hy, heroTextW, f.sansSemiBold, 10.5, C.emeraldText, 1.33) + 2
-  pen.para(c.hero.body, textX, hy, heroTextW, f.sans, 9, C.emeraldText)
+  hy -= pen.para(c.hero.heading, textX, hy, heroTextW, f.sansSemiBold, 10.5, hero.ink, 1.33) + 2
+  pen.para(c.hero.body, textX, hy, heroTextW, f.sans, 9, hero.ink)
   const qx = M + heroW + 12
   pen.roundRect(qx, y, qrBox, heroH, 6, C.white, C.line)
   drawQr(pen, verifyUrl(sha256), qx + 10, y - 8, qrBox - 20)
@@ -320,26 +320,20 @@ function drawPage1(pen: Pen, c: AttestatoContent, sha256: string, d = NORMAL): n
   pen.text(c.subject.hash, M + 12, y - 16.5, f.monoMedium, 10.2, C.ink)
   y -= hashH + d.gap
 
-  // RFC 3161 and Bitcoin side by side
-  const colW = (CW - 18) / 2
-  const colTop = y
-  let ly = sectionHeader(pen, n++, c.sections.rfc3161, M, colTop, colW)
-  drawPill(pen, c.rfc3161.pill, M, ly - 10)
-  ly = drawRows(pen, c.rfc3161.rows, M, ly - 16, colW, 0.34, d)
-  const rx = M + colW + 18
-  let ry = sectionHeader(pen, n++, c.sections.bitcoin, rx, colTop, colW)
-  drawPill(pen, c.bitcoin.pill, rx, ry - 10)
-  ry = drawRows(pen, c.bitcoin.rows, rx, ry - 16, colW, 0.34, d)
+  // Bitcoin anchor
+  y = sectionHeader(pen, n++, c.sections.bitcoin, M, y, CW)
+  drawPill(pen, c.bitcoin.pill, M, y - 10)
+  y = drawRows(pen, c.bitcoin.rows, M, y - 16, CW, 0.3, d)
   if (c.bitcoin.reminder) {
-    ry -= 6
+    y -= 6
     const text = `${c.bitcoin.reminder.heading} ${c.bitcoin.reminder.body}`
-    const lines = pen.wrap(text, f.sans, 8, colW - 16)
-    const bh = lines.length * 11 + 10
-    pen.roundRect(rx, ry, colW, bh, 5, C.amberSoft, C.amberBorder)
-    pen.para(text, rx + 8, ry - 6, colW - 16, f.sans, 8, C.amberText, 1.375)
-    ry -= bh
+    const lines = pen.wrap(text, f.sans, 8.4, CW - 20)
+    const bh = lines.length * 11.6 + 10
+    pen.roundRect(M, y, CW, bh, 5, C.amberSoft, C.amberBorder)
+    pen.para(text, M + 10, y - 6, CW - 20, f.sans, 8.4, C.amberText, 1.38)
+    y -= bh
   }
-  y = Math.min(ly, ry) - d.gap
+  y -= d.gap
 
   y = sectionHeader(pen, n++, c.sections.statement, M, y, CW)
   const stLines = pen.wrap(c.statement, f.serifSemiBold, 9, CW - 24)
@@ -356,13 +350,13 @@ function drawPage2(pen: Pen, c: AttestatoContent) {
   drawGradientBar(pen.page)
   let y = H - M + 6
   pen.text('ProofMark', M, y - 10, f.sansSemiBold, 11, C.ink)
-  pen.text(`ATTESTATO ${c.id}`, M, y - 21, f.sans, 6.5, C.muted)
+  pen.text(`${c.docLabel.replace(/ n\.$/, '').toUpperCase()} ${c.id}`, M, y - 21, f.sans, 6.5, C.muted)
   pen.textRight('Istruzioni di verifica e avvertenze', W - M, y - 10, f.sans, 8, C.muted)
   y -= 30
   pen.hline(M, W - M, y)
   y -= 14
 
-  let n = c.declared ? 6 : 5
+  let n = c.declared ? 5 : 4
   y = sectionHeader(pen, n++, c.sections.verify, M, y, CW)
   y -= pen.para(c.verify.intro, M, y, CW, f.sans, 9, C.ink2) + 4
   for (const step of c.verify.steps) {
@@ -416,8 +410,8 @@ function drawPage2(pen: Pen, c: AttestatoContent) {
 
 export async function renderAttestato(
   cert: Certificate,
-  proofs: { tsr: Uint8Array; ots?: Uint8Array },
-  opts: { sealed?: boolean; fonts?: FontBytes } = {},
+  proofs: { ots: Uint8Array },
+  opts: { fonts?: FontBytes } = {},
 ): Promise<PDFDocument> {
   const fontBytes = opts.fonts ?? (await loadFontBytes())
   const doc = await PDFDocument.create()
@@ -433,14 +427,10 @@ export async function renderAttestato(
 
   const json = new TextEncoder().encode(serializeCertificate(cert))
   const files = [
-    { name: 'prova.tsr', bytes: proofs.tsr, mime: 'application/pkcs7-mime', description: 'Token di marca temporale RFC 3161 (usa openssl ts -token_in)' },
-    ...(proofs.ots
-      ? [{ name: 'prova.ots', bytes: proofs.ots, mime: 'application/vnd.opentimestamps.v1', description: 'Prova OpenTimestamps' }]
-      : []),
+    { name: 'prova.ots', bytes: proofs.ots, mime: 'application/vnd.opentimestamps.v1', description: 'Prova OpenTimestamps (blockchain Bitcoin)' },
     { name: 'certificato.json', bytes: json, mime: 'application/json', description: 'Certificato ProofMark (JSON)' },
   ]
   const content = buildAttestatoContent(cert, {
-    sealed: opts.sealed ?? true,
     attachments: files.map((x) => ({ name: x.name, size: x.bytes.length })),
   })
 
@@ -462,7 +452,7 @@ export async function renderAttestato(
   doc.setAuthor('ProofMark')
   doc.setCreator(`ProofMark v${APP_VERSION}`)
   doc.setProducer(`ProofMark v${APP_VERSION} (pdf-lib)`)
-  doc.setKeywords(['ProofMark', 'RFC 3161', 'OpenTimestamps', cert.file.sha256])
+  doc.setKeywords(['ProofMark', 'OpenTimestamps', 'Bitcoin', cert.file.sha256])
   doc.setLanguage('it-IT')
   doc.setCreationDate(now)
   doc.setModificationDate(now)

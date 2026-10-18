@@ -27,10 +27,10 @@ describe('header', () => {
     render(<App />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/esisteva/i)
     await user.click(screen.getByRole('link', { name: 'Verifica' }))
-    expect(window.location.pathname).toBe('/verifica')
+    expect(window.location.pathname).toBe('/proofmark/verifica')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/verifica/i)
     await user.click(screen.getByRole('link', { name: 'Certifica' }))
-    expect(window.location.pathname).toBe('/')
+    expect(window.location.pathname).toBe('/proofmark/')
   })
 
   test('the theme toggle switches the dark class on <html>', async () => {
@@ -55,17 +55,17 @@ describe('router', () => {
   }
 
   test('exposes the sha256 fragment on /verifica', () => {
-    window.history.replaceState(null, '', '/verifica#sha256=abc')
+    window.history.replaceState(null, '', '/proofmark/verifica#sha256=abc')
     render(<Probe />)
     expect(screen.getByText('/verifica|abc')).toBeInTheDocument()
   })
 
   test('falls back to / for unknown paths and follows history', () => {
-    window.history.replaceState(null, '', '/nope')
+    window.history.replaceState(null, '', '/proofmark/nope')
     render(<Probe />)
     expect(screen.getByText('/|')).toBeInTheDocument()
     act(() => {
-      window.history.pushState(null, '', '/verifica')
+      window.history.pushState(null, '', '/proofmark/verifica')
       window.dispatchEvent(new PopStateEvent('popstate'))
     })
     expect(screen.getByText('/verifica|')).toBeInTheDocument()

@@ -1,23 +1,29 @@
 import { APP_URL, APP_VERSION } from '@/core/app'
 import { bytesToBase64 } from '@/core/base64'
 import type { OtsInfo } from '@/core/ots/ots'
-import type { TsaResult } from '@/core/tsa/rfc3161'
 
 export const DECLARED_NOTE = 'dichiarati dal richiedente, non certificati'
 export const DECLARED_MAX = 120
 
+/**
+ * A ProofMark document. The only proof of time is the OpenTimestamps (Bitcoin) proof in
+ * `opentimestamps.otsBase64`; every other field is descriptive and must be checked against it.
+ * - `ricevuta`: issued at once, the proof is still pending, no date is attested yet.
+ * - `attestato`: issued after the Bitcoin confirmation, attests existence at the block's time.
+ */
 export type Certificate = {
   schema: 'proofmark/v1'
   id: string
-  revision: 1 | 2
+  kind: 'ricevuta' | 'attestato'
   createdAt: string
+  /** Time of the request from the user's device clock: declared, not certified. */
+  requestedAt: string
   declared?: { author?: string; title?: string; note: typeof DECLARED_NOTE }
   file: { name: string; size: number; lastModified: string; sha256: string }
-  rfc3161: { tsa: string; genTime: string; serial: string; policy: string; nonce?: string; tokenBase64: string }
   opentimestamps: {
-    status: 'pending' | 'confirmed' | 'unavailable'
+    status: 'pending' | 'confirmed'
     calendars: string[]
-    otsBase64?: string
+    otsBase64: string
     block?: number
     blockTime?: string
   }
@@ -33,10 +39,10 @@ export class CertError extends Error {
   }
 }
 
-/** PM-<first 12 hash chars, uppercase>-<YYYYMMDD of the stamp in UTC>[-R2] */
-export function makeCertificateId(sha256Hex: string, genTime: Date, revision: 1 | 2): string {
-  const day = genTime.toISOString().slice(0, 10).replaceAll('-', '')
-  return `PM-${sha256Hex.slice(0, 12).toUpperCase()}-${day}${revision === 2 ? '-R2' : ''}`
+/** PM-<first 12 hash chars, uppercase>-<YYYYMMDD of the request in UTC> */
+export function makeCertificateId(sha256Hex: string, requestedAt: Date): string {
+  const day = requestedAt.toISOString().slice(0, 10).replaceAll('-', '')
+  return `PM-${sha256Hex.slice(0, 12).toUpperCase()}-${day}`
 }
 
 function cleanDeclared(declared?: { author?: string; title?: string }): Certificate['declared'] {
@@ -46,53 +52,40 @@ function cleanDeclared(declared?: { author?: string; title?: string }): Certific
   return { ...(author ? { author } : {}), ...(title ? { title } : {}), note: DECLARED_NOTE }
 }
 
+/** Builds the receipt issued right after the hash was submitted to the calendars. */
 export function buildCertificate(input: {
   file: File
   sha256: string
-  tsa: TsaResult
-  ots?: Uint8Array
-  otsInfo?: OtsInfo
+  ots: Uint8Array
+  otsInfo: OtsInfo
+  requestedAt?: Date
   declared?: { author?: string; title?: string }
 }): Certificate {
-  const { file, sha256, tsa, ots, otsInfo } = input
+  const { file, sha256, ots, otsInfo } = input
+  const requestedAt = input.requestedAt ?? new Date()
   const declared = cleanDeclared(input.declared)
   return {
     schema: 'proofmark/v1',
-    id: makeCertificateId(sha256, tsa.info.genTime, 1),
-    revision: 1,
+    id: makeCertificateId(sha256, requestedAt),
+    kind: 'ricevuta',
     createdAt: new Date().toISOString(),
+    requestedAt: requestedAt.toISOString(),
     ...(declared ? { declared } : {}),
     file: { name: file.name, size: file.size, lastModified: new Date(file.lastModified).toISOString(), sha256 },
-    rfc3161: {
-      tsa: tsa.info.tsa,
-      genTime: tsa.info.genTime.toISOString(),
-      serial: tsa.info.serialHex,
-      policy: tsa.info.policy,
-      ...(tsa.info.nonce !== undefined ? { nonce: tsa.info.nonce.toString(16) } : {}),
-      tokenBase64: bytesToBase64(tsa.token),
-    },
-    opentimestamps:
-      ots && otsInfo
-        ? {
-            status: otsInfo.status,
-            calendars: otsInfo.calendars,
-            otsBase64: bytesToBase64(ots),
-            ...(otsInfo.block !== undefined ? { block: otsInfo.block } : {}),
-          }
-        : { status: 'unavailable', calendars: [] },
+    opentimestamps: { status: 'pending', calendars: otsInfo.calendars, otsBase64: bytesToBase64(ots) },
     app: { version: APP_VERSION, url: APP_URL },
   }
 }
 
-export function upgradeCertificate(
+/** Turns a receipt into the attestation, once the proof is confirmed in a Bitcoin block. */
+export function confirmCertificate(
   cert: Certificate,
   ots: Uint8Array,
   confirmed: { block: number; blockTime: Date },
 ): Certificate {
   return {
     ...cert,
-    id: makeCertificateId(cert.file.sha256, new Date(cert.rfc3161.genTime), 2),
-    revision: 2,
+    kind: 'attestato',
     createdAt: new Date().toISOString(),
     opentimestamps: {
       status: 'confirmed',
@@ -121,23 +114,20 @@ export function parseCertificate(json: string): Certificate {
   }
   const invalid = (why: string) => new CertError('schema', `Certificato ProofMark non valido: ${why}.`)
   if (!isObj(data) || data.schema !== 'proofmark/v1') throw invalid('formato sconosciuto')
-  const { file, rfc3161, opentimestamps } = data
-  if (!isStr(data.id) || !(data.revision === 1 || data.revision === 2) || !isStr(data.createdAt)) {
-    throw invalid('intestazione incompleta')
-  }
+  const { file, opentimestamps } = data
+  if (!isStr(data.id) || !isStr(data.createdAt) || !isStr(data.requestedAt)) throw invalid('intestazione incompleta')
+  if (data.kind !== 'ricevuta' && data.kind !== 'attestato') throw invalid('tipo di documento sconosciuto')
   if (!isObj(file) || !isStr(file.name) || typeof file.size !== 'number' || !isStr(file.lastModified)) {
     throw invalid('dati del file mancanti')
   }
   if (!isStr(file.sha256) || !/^[0-9a-f]{64}$/.test(file.sha256)) throw invalid('impronta SHA-256 non valida')
-  if (!isObj(rfc3161) || !isStr(rfc3161.tokenBase64) || !isStr(rfc3161.genTime) || !isStr(rfc3161.tsa)) {
-    throw invalid('marca temporale mancante')
-  }
   if (
     !isObj(opentimestamps) ||
-    !['pending', 'confirmed', 'unavailable'].includes(opentimestamps.status as string) ||
-    !Array.isArray(opentimestamps.calendars)
+    !['pending', 'confirmed'].includes(opentimestamps.status as string) ||
+    !Array.isArray(opentimestamps.calendars) ||
+    !isStr(opentimestamps.otsBase64)
   ) {
-    throw invalid('dati OpenTimestamps non validi')
+    throw invalid('prova Bitcoin mancante o non valida')
   }
   return data as unknown as Certificate
 }

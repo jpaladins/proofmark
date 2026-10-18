@@ -1,47 +1,59 @@
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { buildCertificate, DECLARED_MAX, upgradeCertificate, type Certificate } from '@/core/cert/certificate'
+import { buildCertificate, confirmCertificate, DECLARED_MAX, type Certificate } from '@/core/cert/certificate'
 import { inspectOts } from '@/core/ots/ots'
 import type { FontBytes } from '@/core/pdf/fonts'
-import { parseTimeStampResp } from '@/core/tsa/rfc3161'
-import { fixture, fixtureText } from './fixtures'
+import { fixture } from './fixtures'
 
-export const TSA = parseTimeStampResp(fixture('data.tsr'))
+const sha256Of = (name: string) => createHash('sha256').update(fixture(name)).digest('hex')
+
+/** incomplete.txt.ots is a pending OpenTimestamps proof for incomplete.txt (official example). */
+export const PENDING_HASH = sha256Of('incomplete.txt')
 export const PENDING_OTS = fixture('incomplete.txt.ots')
+/** hello-world.txt.ots is confirmed in Bitcoin block 358391 (official example). */
+export const CONFIRMED_HASH = sha256Of('hello-world.txt')
+export const CONFIRMED_OTS = fixture('hello-world.txt.ots')
+export const BLOCK_358391 = { block: 358391, blockTime: new Date(1432827678000) }
+export const REQUESTED_AT = new Date('2026-10-18T10:32:15Z')
+
+const zip = (name: string) =>
+  new File([new Uint8Array([0x50, 0x4b, 3, 4])], name, { lastModified: Date.UTC(2026, 9, 16, 21, 41) })
 
 export function pendingCert(declared?: { author?: string; title?: string }): Certificate {
-  const file = new File([new Uint8Array([0x50, 0x4b, 3, 4])], 'le-stagioni-del-vetro_v3.zip', {
-    lastModified: Date.UTC(2026, 9, 16, 21, 41),
-  })
   return buildCertificate({
-    file,
-    sha256: fixtureText('data.sha256'),
-    tsa: TSA,
+    file: zip('le-stagioni-del-vetro_v3.zip'),
+    sha256: PENDING_HASH,
     ots: PENDING_OTS,
     otsInfo: inspectOts(PENDING_OTS),
+    requestedAt: REQUESTED_AT,
     declared,
   })
 }
 
-/** Longest inputs the app accepts: a 255-character file name and both declared fields at DECLARED_MAX, in wide glyphs. */
-export function worstCaseCert(): Certificate {
-  const name = `${'WM'.repeat(125)}W.zip`
-  const file = new File([new Uint8Array([0x50, 0x4b, 3, 4])], name, { lastModified: Date.UTC(2026, 9, 16, 21, 41) })
-  const field = (word: string) => Array.from({ length: 20 }, () => word).join(' ').slice(0, DECLARED_MAX)
-  return buildCertificate({
-    file,
-    sha256: fixtureText('data.sha256'),
-    tsa: TSA,
-    ots: PENDING_OTS,
-    otsInfo: inspectOts(PENDING_OTS),
-    declared: { author: field('WWWWW'), title: field('MMMMM') },
+/** A receipt for hello-world.txt, then confirmed into an attestation for block 358391. */
+export function confirmedCert(declared?: { author?: string; title?: string }): Certificate {
+  const receipt = buildCertificate({
+    file: zip('hello-world.zip'),
+    sha256: CONFIRMED_HASH,
+    ots: CONFIRMED_OTS,
+    otsInfo: { ...inspectOts(CONFIRMED_OTS), status: 'pending' },
+    requestedAt: REQUESTED_AT,
+    declared,
   })
+  return confirmCertificate(receipt, CONFIRMED_OTS, BLOCK_358391)
 }
 
-export function confirmedCert(): Certificate {
-  return upgradeCertificate(pendingCert(), fixture('hello-world.txt.ots'), {
-    block: 358391,
-    blockTime: new Date(1432827678000),
+/** Longest inputs the app accepts: a 255-character file name and both declared fields at DECLARED_MAX, in wide glyphs. */
+export function worstCaseCert(): Certificate {
+  const field = (word: string) => Array.from({ length: 20 }, () => word).join(' ').slice(0, DECLARED_MAX)
+  return buildCertificate({
+    file: zip(`${'WM'.repeat(125)}W.zip`),
+    sha256: PENDING_HASH,
+    ots: PENDING_OTS,
+    otsInfo: inspectOts(PENDING_OTS),
+    requestedAt: REQUESTED_AT,
+    declared: { author: field('WWWWW'), title: field('MMMMM') },
   })
 }
 

@@ -1,6 +1,6 @@
 import { Moon, ShieldCheck, Sun } from 'lucide-react'
 import type { MouseEvent } from 'react'
-import { useRoute, type Path } from '../router'
+import { toUrl, useRoute, type Path } from '../router'
 import { useTheme } from '../useTheme'
 import { cx } from '../cx'
 
@@ -34,7 +34,7 @@ function NavLink({ to, children }: { to: Path; children: string }) {
   }
   return (
     <a
-      href={to}
+      href={toUrl(to)}
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
       className={cx(
@@ -68,7 +68,7 @@ export function Header() {
     <header className="border-b border-line bg-surface/80 backdrop-blur supports-[backdrop-filter]:bg-surface/70 sticky top-0 z-20">
       <div className="mx-auto flex max-w-6xl items-center gap-x-3 px-4 py-3 sm:gap-x-6 sm:px-6">
         <a
-          href="/"
+          href={toUrl('/')}
           onClick={(e) => {
             e.preventDefault()
             navigate('/')
