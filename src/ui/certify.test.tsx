@@ -22,6 +22,12 @@ function fakeDeps(): CertifyDeps {
 
 const input = () => screen.getByLabelText('Seleziona archivio .zip') as HTMLInputElement
 
+/** Chooses a file and presses the confirmation button: nothing starts on upload alone. */
+async function chooseAndConfirm(user: ReturnType<typeof userEvent.setup>, file: File) {
+  await user.upload(input(), file)
+  await user.click(await screen.findByRole('button', { name: 'Certifica archivio' }))
+}
+
 describe('CertifyPage', () => {
   test('rejects a JPEG renamed to .zip without starting', async () => {
     const deps = fakeDeps()
@@ -51,7 +57,7 @@ describe('CertifyPage', () => {
     const user = userEvent.setup()
     render(<CertifyPage deps={deps} />)
     await user.type(screen.getByLabelText(/Autore/), '  Ada Lovelace  ')
-    await user.upload(input(), new File([PK], 'opera.zip'))
+    await chooseAndConfirm(user, new File([PK], 'opera.zip'))
     const result = await screen.findByRole('region', { name: 'Ricevuta generata' })
     const cert = vi.mocked(deps.renderAttestato).mock.calls[0][0]
     expect(cert.declared?.author).toBe('Ada Lovelace')
@@ -71,7 +77,7 @@ describe('CertifyPage', () => {
     const writeText = vi.fn(async () => {})
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     render(<CertifyPage deps={fakeDeps()} />)
-    await user.upload(input(), new File([PK], 'opera.zip'))
+    await chooseAndConfirm(user, new File([PK], 'opera.zip'))
     await user.click(await screen.findByRole('button', { name: "Copia l'impronta" }))
     expect(writeText).toHaveBeenCalledWith(HASH)
   })
@@ -80,7 +86,7 @@ describe('CertifyPage', () => {
     const user = userEvent.setup()
     const deps = fakeDeps()
     render(<CertifyPage deps={deps} />)
-    await user.upload(input(), new File([PK], 'opera.zip'))
+    await chooseAndConfirm(user, new File([PK], 'opera.zip'))
     await screen.findByRole('region', { name: 'Ricevuta generata' })
     const requested = vi.mocked(deps.renderAttestato).mock.calls[0][0].requestedAt
     const at = new Date(new Date(requested).getTime() + 3 * 3600_000)
@@ -96,10 +102,49 @@ describe('CertifyPage', () => {
     vi.mocked(deps.stampHash).mockRejectedValueOnce(new Error('offline'))
     const user = userEvent.setup()
     render(<CertifyPage deps={deps} />)
-    await user.upload(input(), new File([PK], 'opera.zip'))
+    await chooseAndConfirm(user, new File([PK], 'opera.zip'))
     await user.click(await screen.findByRole('button', { name: 'Riprova' }))
     await waitFor(() => expect(screen.getByRole('region', { name: 'Ricevuta generata' })).toBeInTheDocument())
     expect(deps.hashFile).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('confirmation before certifying', () => {
+  test('choosing a zip shows a summary and waits for confirmation', async () => {
+    const deps = fakeDeps()
+    const user = userEvent.setup()
+    render(<CertifyPage deps={deps} />)
+    await user.upload(input(), new File([PK], 'opera.zip'))
+    const summary = await screen.findByRole('region', { name: 'Archivio selezionato' })
+    expect(summary).toHaveTextContent('opera.zip')
+    expect(summary).toHaveTextContent('7 byte')
+    expect(within(summary).getByRole('button', { name: 'Certifica archivio' })).toBeEnabled()
+    expect(deps.hashFile).not.toHaveBeenCalled()
+    expect(deps.stampHash).not.toHaveBeenCalled()
+  })
+
+  test('uses the declared data as they are when the user confirms', async () => {
+    const deps = fakeDeps()
+    const user = userEvent.setup()
+    render(<CertifyPage deps={deps} />)
+    await user.upload(input(), new File([PK], 'opera.zip'))
+    await user.type(screen.getByLabelText(/Titolo dell'opera/), 'Il mio romanzo')
+    await user.click(screen.getByRole('button', { name: 'Certifica archivio' }))
+    await screen.findByRole('region', { name: 'Ricevuta generata' })
+    expect(deps.hashFile).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(deps.renderAttestato).mock.calls[0][0].declared?.title).toBe('Il mio romanzo')
+  })
+
+  test('lets the user change the archive before confirming', async () => {
+    const deps = fakeDeps()
+    const user = userEvent.setup()
+    render(<CertifyPage deps={deps} />)
+    await user.upload(input(), new File([PK], 'opera.zip'))
+    await user.click(await screen.findByRole('button', { name: 'Cambia archivio' }))
+    expect(screen.queryByRole('region', { name: 'Archivio selezionato' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Certifica archivio' })).toBeNull()
+    expect(input()).toBeInTheDocument()
+    expect(deps.hashFile).not.toHaveBeenCalled()
   })
 })
 
