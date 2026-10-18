@@ -285,6 +285,7 @@ function drawPage1(pen: Pen, c: AttestatoContent, sha256: string, d = NORMAL): n
   // Header
   drawLogo(pen, M, y, 30)
   pen.text('ProofMark', M + 38, y - 13, f.sansSemiBold, 14, C.ink)
+  pen.text(c.brandCredit, M + 38 + pen.width('ProofMark', f.sansSemiBold, 14) + 6, y - 13, f.sansMedium, 6.5, C.muted)
   pen.text('PROVA DI ESISTENZA DIGITALE', M + 38, y - 24, f.sans, 6.5, C.muted)
   pen.textRight(c.docLabel, W - M, y - 7, f.sans, 7.5, C.muted)
   pen.textRight(c.id, W - M, y - 18, f.monoMedium, 9, C.ink)
@@ -375,6 +376,7 @@ function drawPage2(pen: Pen, c: AttestatoContent) {
   drawGradientBar(pen.page)
   let y = H - M + 6
   pen.text('ProofMark', M, y - 10, f.sansSemiBold, 11, C.ink)
+  pen.text(c.brandCredit, M + pen.width('ProofMark', f.sansSemiBold, 11) + 5, y - 10, f.sansMedium, 5.8, C.muted)
   pen.text(`${c.docLabel.replace(/ n\.$/, '').toUpperCase()} ${c.id}`, M, y - 21, f.sans, 6.5, C.muted)
   pen.textRight('Istruzioni di verifica e avvertenze', W - M, y - 10, f.sans, 8, C.muted)
   y -= 30

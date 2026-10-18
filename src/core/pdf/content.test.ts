@@ -98,3 +98,8 @@ describe('both documents', () => {
 test('groupHash splits a hash into 8-character groups', () => {
   expect(groupHash('0123456789abcdef0123')).toBe('01234567 89abcdef 0123')
 })
+
+test('the brand line credits the developer in small capitals', () => {
+  expect(receipt().brandCredit).toBe('BY JPALADINS')
+  expect(attestation().brandCredit).toBe('BY JPALADINS')
+})
