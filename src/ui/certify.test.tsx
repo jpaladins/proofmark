@@ -70,6 +70,7 @@ describe('CertifyPage', () => {
       expect(within(result).getByRole('button', { name })).toBeInTheDocument()
     }
     expect(within(result).getByText("Conserva l'archivio esattamente com'è.")).toBeInTheDocument()
+    expect(within(result).getByText(/alle ore \d{2}:\d{2}:\d{2} UTC([+-]\d{1,2}(:\d{2})?)?$/)).toBeInTheDocument()
   })
 
   test('copies the hash to the clipboard', async () => {

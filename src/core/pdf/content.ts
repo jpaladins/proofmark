@@ -4,6 +4,7 @@
 // existence attested at the time of the Bitcoin block).
 import { APP_VERSION, DEVELOPER, VERIFY_DISPLAY } from '@/core/app'
 import type { Certificate } from '@/core/cert/certificate'
+import { localTimeZone, utcOffset } from '@/core/time'
 
 export type Row = { label: string; value: string; mono?: boolean; note?: string }
 export type Pill = { text: string; tone: 'ok' | 'warn' | 'muted' }
@@ -19,7 +20,7 @@ export type AttestatoContent = {
   title: string
   subtitle: string
   /** `stamp` (attestation only) is the attested moment, laid out large in the hero box. */
-  hero: { heading: string; body: string; stamp?: { kicker: string; date: string; time: string; note: string } }
+  hero: { heading: string; body: string; stamp?: { kicker: string; date: string; time: string } }
   qrCaption: string
   declared?: { tag: string; rows: Row[] }
   subject: { rows: Row[]; hash: string }
@@ -32,15 +33,14 @@ export type AttestatoContent = {
   sections: Record<'declared' | 'subject' | 'bitcoin' | 'statement' | 'verify' | 'warnings' | 'limits', string>
 }
 
-const ROME = 'Europe/Rome'
 export const PENDING_REMINDER = `Tra qualche ora torna su ${VERIFY_DISPLAY}, carica l'archivio e questa ricevuta e scarica l'attestato con la data certificata dalla blockchain.`
 
-const fmtDate = (d: Date, timeZone = ROME) =>
+const fmtDate = (d: Date, timeZone: string) =>
   new Intl.DateTimeFormat('it-IT', { timeZone, day: '2-digit', month: '2-digit', year: 'numeric' }).format(d)
-const fmtTime = (d: Date, timeZone = ROME) =>
+const fmtTime = (d: Date, timeZone: string) =>
   new Intl.DateTimeFormat('it-IT', { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(d)
-const fmtLongDate = (d: Date) =>
-  new Intl.DateTimeFormat('it-IT', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }).format(d)
+const fmtLongDate = (d: Date, timeZone = 'UTC') =>
+  new Intl.DateTimeFormat('it-IT', { timeZone, day: 'numeric', month: 'long', year: 'numeric' }).format(d)
 
 export function formatBytes(size: number): string {
   const units = ['byte', 'KB', 'MB', 'GB', 'TB']
@@ -59,8 +59,11 @@ export function groupHash(hex: string): string {
 
 export function buildAttestatoContent(
   cert: Certificate,
-  opts: { attachments: { name: string; size: number }[] },
+  opts: { attachments: { name: string; size: number }[]; timeZone?: string },
 ): AttestatoContent {
+  // Local times are shown in the time zone of the device generating the document, with its offset.
+  const tz = opts.timeZone ?? localTimeZone()
+  const local = (d: Date) => `${fmtTime(d, tz)} ${utcOffset(d, tz)}`
   const confirmed = cert.kind === 'attestato' && cert.opentimestamps.status === 'confirmed'
   const ots = cert.opentimestamps
   const created = new Date(cert.createdAt)
@@ -75,7 +78,7 @@ export function buildAttestatoContent(
 
   const requestRow: Row = {
     label: 'Richiesta inviata il',
-    value: `${fmtDate(requested)} alle ${fmtTime(requested)}`,
+    value: `${fmtDate(requested, tz)} alle ${local(requested)}`,
     note: '(orologio del dispositivo, non certificato)',
   }
 
@@ -89,7 +92,7 @@ export function buildAttestatoContent(
             {
               label: 'Data del blocco',
               value: `${fmtDate(blockTime, 'UTC')} ${fmtTime(blockTime, 'UTC')} UTC`,
-              note: `(${fmtTime(blockTime)} ora italiana)`,
+              ...(utcOffset(blockTime, tz) === 'UTC' ? {} : { note: `(${local(blockTime)})` }),
             },
             {
               label: 'Precisione',
@@ -128,7 +131,7 @@ export function buildAttestatoContent(
     brandCredit: `BY ${DEVELOPER.name.toUpperCase()}`,
     docLabel: confirmed ? 'Attestato n.' : 'Ricevuta n.',
     tone: confirmed ? 'confirmed' : 'pending',
-    issued: `Emesso il ${fmtDate(created)} alle ${fmtTime(created)} (Europe/Rome)`,
+    issued: `Emesso il ${fmtDate(created, tz)} alle ${fmtTime(created, tz)} (${utcOffset(created, tz)})`,
     title: confirmed ? 'Attestato di Esistenza Digitale' : 'Ricevuta di registrazione',
     subtitle: confirmed
       ? 'Prova di anteriorità tramite ancoraggio sulla blockchain Bitcoin (OpenTimestamps)'
@@ -138,9 +141,9 @@ export function buildAttestatoContent(
           heading: `Esistenza attestata al ${blockHeading}`,
           stamp: blockTime && {
             kicker: 'Esistenza attestata al',
-            date: fmtLongDate(blockTime),
-            time: `${fmtTime(blockTime, 'UTC')} UTC`,
-            note: `${fmtTime(blockTime)} ora italiana`,
+            // One time, in the device time zone with its offset; the date follows the same zone.
+            date: fmtLongDate(blockTime, tz),
+            time: local(blockTime),
           },
           body: `Un archivio con l'impronta SHA-256 riportata sotto esisteva non oltre questa data, come risulta dal blocco Bitcoin #${ots.block} che ne contiene la prova.`,
         }
@@ -162,7 +165,7 @@ export function buildAttestatoContent(
         },
         {
           label: "Ultima modifica (dal sistema dell'utente)",
-          value: `${fmtDate(new Date(cert.file.lastModified))} ${fmtTime(new Date(cert.file.lastModified)).slice(0, 5)}`,
+          value: `${fmtDate(new Date(cert.file.lastModified), tz)} ${fmtTime(new Date(cert.file.lastModified), tz).slice(0, 5)} ${utcOffset(new Date(cert.file.lastModified), tz)}`,
           note: '— informazione non certificata',
         },
         { label: 'Algoritmo di impronta', value: 'SHA-256' },
