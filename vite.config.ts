@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig, type Plugin } from 'vite'
 import { CSP } from './src/csp.ts'
+import { PAGES } from './src/pages.ts'
 
 // Published as a GitHub Pages project site: https://jpaladins.github.io/proofmark/
 const BASE = '/proofmark/'
@@ -21,7 +22,8 @@ function githubPages(): Plugin {
     generateBundle(_, bundle) {
       const index = bundle['index.html']
       if (!index || index.type !== 'asset') this.error('index.html missing from the bundle')
-      for (const fileName of ['verifica/index.html', '404.html']) {
+      const pageFiles = PAGES.filter((p) => p !== '/').map((p) => `${p.slice(1)}/index.html`)
+      for (const fileName of [...pageFiles, '404.html']) {
         this.emitFile({ type: 'asset', fileName, source: index.source })
       }
     },
