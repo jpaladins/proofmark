@@ -1,0 +1,44 @@
+ProofMark
+Copyright (C) 2026 JPaladins <https://github.com/jpaladins>
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, version 3 of the License.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+License for more details.
+
+The source code is available at <https://github.com/jpaladins/proofmark>.
+The license text is in the LICENSE file; the additional terms below are part
+of the license conditions for this program.
+
+
+Additional terms under section 7(b) of the GNU Affero General Public License
+----------------------------------------------------------------------------
+
+As permitted by section 7(b) of the license, the following author
+attribution must be preserved, together with the copyright notice above:
+
+    "Developed by JPaladins", linked to https://github.com/jpaladins
+
+Any copy or modified version of this program that is conveyed, or whose
+user interface is made available to users interacting with it remotely
+through a computer network, must keep this attribution among its
+Appropriate Legal Notices, displayed in a reasonably visible place of the
+user interface on every page (in the original program, at the bottom of
+each page). The attribution may be restyled, but it must not be removed,
+hidden, altered in meaning or attributed to anyone else.
+
+
+Third-party material
+--------------------
+
+The font files in src/assets/fonts (IBM Plex) are licensed separately under
+the SIL Open Font License 1.1; see src/assets/fonts/OFL.txt.
+
+
+The full text of the GNU Affero General Public License, version 3, is in the
+LICENSE file.
+
