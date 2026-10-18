@@ -39,9 +39,9 @@ describe('renderAttestato', () => {
     const cert = pendingCert()
     const doc = await renderAttestato(cert, { ots: PENDING_OTS }, { fonts })
     const files = await extractAttachments(await doc.save())
-    expect(Object.keys(files).sort()).toEqual(['certificato.json', 'prova.ots'])
-    expect(files['prova.ots']).toEqual(PENDING_OTS)
-    expect(JSON.parse(new TextDecoder().decode(files['certificato.json'])).id).toBe(cert.id)
+    expect(Object.keys(files).sort()).toEqual(['le-stagioni-del-vetro_v3.ots', 'le-stagioni-del-vetro_v3_ricevuta.json'])
+    expect(files['le-stagioni-del-vetro_v3.ots']).toEqual(PENDING_OTS)
+    expect(JSON.parse(new TextDecoder().decode(files['le-stagioni-del-vetro_v3_ricevuta.json'])).id).toBe(cert.id)
   })
 
   test.each([

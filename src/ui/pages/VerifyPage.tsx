@@ -16,7 +16,8 @@ import { DropZone } from '../components/DropZone'
 import { Fingerprint } from '../components/Fingerprint'
 import { HashProgress } from '../components/HashProgress'
 import { Alert, Button } from '../components/primitives'
-import { baseName, downloadBytes } from '../download'
+import { downloadBytes } from '../download'
+import { proofFileNames } from '@/core/cert/fileNames'
 import { useRoute } from '../router'
 
 export type VerifyPageDeps = {
@@ -142,23 +143,23 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
     }
   }
 
-  const base = attestato ? baseName(attestato.certificate.file.name) : ''
+  const names = attestato ? proofFileNames(attestato.certificate) : undefined
   const downloads = attestato
     ? [
         {
           label: 'Scarica attestato PDF',
           icon: FileText,
-          run: () => downloadBytes(attestato.pdf, `${base}_attestato.pdf`, 'application/pdf'),
+          run: () => downloadBytes(attestato.pdf, names!.pdf, 'application/pdf'),
         },
         {
           label: 'Scarica attestato JSON',
           icon: FileJson,
-          run: () => downloadBytes(attestato.json, `${base}_attestato.json`, 'application/json'),
+          run: () => downloadBytes(attestato.json, names!.json, 'application/json'),
         },
         {
           label: 'Scarica prova Bitcoin (.ots)',
           icon: Download,
-          run: () => downloadBytes(attestato.ots, `${base}.ots`, 'application/vnd.opentimestamps.v1'),
+          run: () => downloadBytes(attestato.ots, names!.ots, 'application/vnd.opentimestamps.v1'),
         },
       ]
     : []

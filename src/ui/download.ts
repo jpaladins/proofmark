@@ -12,8 +12,3 @@ export function downloadBytes(data: Uint8Array | string, filename: string, mime:
   a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
-
-/** "archivio.zip" → "archivio" */
-export function baseName(zipName: string): string {
-  return zipName.replace(/\.zip$/i, '') || 'archivio'
-}

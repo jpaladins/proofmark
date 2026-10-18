@@ -187,7 +187,7 @@ export function PrivacyPage() {
           blockchain Bitcoin, un registro pubblico che nessuno, nemmeno ProofMark, può modificare a posteriori. La verifica
           legge la data dalla blockchain, mai dal documento caricato: un attestato con una data alterata viene segnalato
           come non valido. Ricevuta e attestato in PDF non sono firmati; la prova crittografica è il file{' '}
-          <Code>prova.ots</Code> allegato, che chiunque può controllare con gli strumenti ufficiali di OpenTimestamps.
+          <Code>.ots</Code> allegato, con lo stesso nome dell'archivio, che chiunque può controllare con gli strumenti ufficiali di OpenTimestamps.
         </p>
         <p>
           <strong className="text-ink">Codice aperto.</strong> Tutto il codice è pubblico con licenza AGPL-3.0 ed è lo stesso che
