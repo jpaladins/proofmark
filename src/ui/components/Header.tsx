@@ -1,0 +1,103 @@
+import { Moon, ShieldCheck, Sun } from 'lucide-react'
+import type { MouseEvent } from 'react'
+import { toUrl, useRoute, type Path } from '../router'
+import { useTheme } from '../useTheme'
+import { cx } from '../cx'
+
+export function Logo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 64 64" aria-hidden className={className}>
+      <defs>
+        <linearGradient id="pm-logo-g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#059669" />
+          <stop offset="1" stopColor="#1d4ed8" />
+        </linearGradient>
+      </defs>
+      <path d="M32 4 54 12v18c0 14-9.5 24.5-22 30C19.5 54.5 10 44 10 30V12z" fill="url(#pm-logo-g)" />
+      <path d="M32 15v4M20 43l3.5-2.5M44 43l-3.5-2.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity=".85" />
+      <circle cx="32" cy="31" r="11" fill="none" stroke="#fff" strokeWidth="3" />
+      <path d="M32 24.5V31l4.5 2.8" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="32" cy="13" r="2.6" fill="#fff" />
+      <circle cx="18.5" cy="44" r="2.6" fill="#fff" />
+      <circle cx="45.5" cy="44" r="2.6" fill="#fff" />
+    </svg>
+  )
+}
+
+function NavLink({ to, children }: { to: Path; children: string }) {
+  const { path, navigate } = useRoute()
+  const active = path === to
+  const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+    e.preventDefault()
+    navigate(to)
+  }
+  return (
+    <a
+      href={toUrl(to)}
+      onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+      className={cx(
+        'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+        active ? 'bg-sunken text-ink' : 'text-muted hover:text-ink',
+      )}
+    >
+      {children}
+    </a>
+  )
+}
+
+export function ThemeToggle() {
+  const { resolved, setTheme } = useTheme()
+  const next = resolved === 'dark' ? 'light' : 'dark'
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(next)}
+      aria-label={next === 'dark' ? 'Passa al tema scuro' : 'Passa al tema chiaro'}
+      className="grid size-9 place-items-center rounded-md text-muted transition-colors hover:bg-sunken hover:text-ink"
+    >
+      {resolved === 'dark' ? <Sun aria-hidden className="size-4.5" /> : <Moon aria-hidden className="size-4.5" />}
+    </button>
+  )
+}
+
+export function Header() {
+  const { navigate } = useRoute()
+  return (
+    <header className="border-b border-line bg-surface/80 backdrop-blur supports-[backdrop-filter]:bg-surface/70 sticky top-0 z-20">
+      <div className="mx-auto flex max-w-6xl items-center gap-x-3 px-4 py-3 sm:gap-x-6 sm:px-6">
+        <a
+          href={toUrl('/')}
+          onClick={(e) => {
+            e.preventDefault()
+            navigate('/')
+          }}
+          className="flex items-center gap-2.5"
+        >
+          <Logo className="size-8" />
+          <span className="hidden font-serif text-lg font-semibold tracking-tight min-[400px]:inline">ProofMark</span>
+          <span className="sr-only min-[400px]:hidden">ProofMark</span>
+        </a>
+        <nav aria-label="Sezioni" className="flex items-center gap-1">
+          <NavLink to="/">Certifica</NavLink>
+          <NavLink to="/verifica">Verifica</NavLink>
+        </nav>
+        <div className="ml-auto flex items-center gap-2">
+          <p className="hidden items-center gap-1.5 rounded-full border border-emerald/30 bg-emerald-soft px-3 py-1 text-xs font-medium text-emerald-ink md:flex">
+            <ShieldCheck aria-hidden className="size-3.5" />
+            <span>Zero-Knowledge: i file vengono elaborati solo nel tuo browser</span>
+          </p>
+          <p
+            className="flex items-center gap-1 whitespace-nowrap rounded-full border border-emerald/30 bg-emerald-soft px-2 py-1 text-xs font-medium text-emerald-ink md:hidden"
+            title="I file vengono elaborati solo nel tuo browser"
+          >
+            <ShieldCheck aria-hidden className="size-3.5" />
+            <span aria-hidden>Zero-Knowledge</span>
+          </p>
+          <ThemeToggle />
+        </div>
+      </div>
+    </header>
+  )
+}
