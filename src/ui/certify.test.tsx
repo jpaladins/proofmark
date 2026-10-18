@@ -110,6 +110,18 @@ describe('CertifyPage', () => {
   })
 })
 
+test('the receipt opens at the top of the page with its heading focused', async () => {
+  const scrollTo = vi.fn()
+  vi.stubGlobal('scrollTo', scrollTo)
+  const user = userEvent.setup()
+  render(<CertifyPage deps={fakeDeps()} />)
+  await chooseAndConfirm(user, new File([PK], 'opera.zip'))
+  const heading = await screen.findByRole('heading', { name: 'Registrazione inviata alla blockchain' })
+  expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }))
+  expect(heading).toHaveFocus()
+  vi.unstubAllGlobals()
+})
+
 describe('confirmation before certifying', () => {
   test('choosing a zip shows a summary and waits for confirmation', async () => {
     const deps = fakeDeps()
