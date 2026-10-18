@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import App from '@/App'
@@ -70,4 +70,11 @@ describe('router', () => {
     })
     expect(screen.getByText('/verifica|')).toBeInTheDocument()
   })
+})
+
+test('the site title is always visible, not only on wide screens', () => {
+  render(<App />)
+  const brand = screen.getByRole('link', { name: 'ProofMark' })
+  const title = within(brand).getByText('ProofMark')
+  expect(title.className).not.toMatch(/(^|\s)(hidden|sr-only)(\s|$)/)
 })
