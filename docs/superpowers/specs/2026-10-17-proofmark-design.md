@@ -188,3 +188,20 @@ Formato A4, una o due pagine, impaginazione sobria da documento notarile/tecnico
 - Disegno dell'icona (scudo + orologio + nodo hash), tipografia, micro-interazioni.
 - Gestione degli errori di rete e dei timeout di DigiCert e OpenTimestamps.
 - Strategia di test: unit test su costruzione/parsing di ASN.1, hashing e verifica (con un token reale salvato come fixture); test end-to-end della generazione PDF.
+
+---
+
+## 13. Revisione del 2026-10-18: solo Bitcoin, pubblicazione su GitHub Pages
+
+Decisa con l'utente. Questa sezione **sostituisce** le parti del documento che parlano di DigiCert, di Cloudflare Pages e del sigillo PAdES.
+
+- **Niente più marca DigiCert RFC 3161.** L'utente ha dubbi sul suo valore. Si eliminano la Pages Function `/api/tsa`, il client e la verifica RFC 3161, il certificato radice DigiCert e il sigillo PAdES del PDF. L'unica prova di data è l'ancoraggio Bitcoin tramite OpenTimestamps, che diventa **obbligatorio**: se nessun calendario risponde, la certificazione si ferma con "Riprova".
+- **Due documenti distinti.**
+  1. **Ricevuta di registrazione**, emessa subito. Contiene l'impronta e l'ora della richiesta presa dall'orologio del dispositivo (dichiarata, non certificata). Lo stato è "in attesa di conferma Bitcoin", con il promemoria per tornare tra qualche ora. **Non attesta alcuna data.**
+  2. **Attestato di Esistenza Digitale**, emesso dalla pagina Verifica dopo la conferma: "Esistenza attestata al blocco Bitcoin #N del <data del blocco>". Il numero e la data del blocco provengono solo dalla verifica in rete della prova (Esplora), mai dal JSON caricato. L'attestato ha lo stesso ID della ricevuta.
+- **Precisione.** La data è quella del blocco, con una tolleranza di circa due ore. Il PDF lo dichiara.
+- **PDF non firmato.** La prova crittografica è il file `prova.ots` allegato, verificabile da chiunque con OpenTimestamps.
+- **Pubblicazione.** GitHub Pages su `https://jpaladins.github.io/proofmark/` (base `/proofmark/`), tramite la GitHub Action `deploy.yml`. Nessun dominio personalizzato.
+  - Il percorso `/verifica` usa una copia di `index.html` in `verifica/index.html` e come `404.html`.
+  - La CSP sta in un `<meta>`, perché GitHub Pages non supporta header personalizzati.
+- **Stepper a 3 fasi:** `1. Calcolo Hash → 2. Ancoraggio Bitcoin → 3. Ricevuta Generata`.

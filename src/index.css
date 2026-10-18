@@ -1,0 +1,146 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@font-face {
+  font-family: 'Plex Sans';
+  src: url('./assets/fonts/web/IBMPlexSans-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Plex Sans';
+  src: url('./assets/fonts/web/IBMPlexSans-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Plex Sans';
+  src: url('./assets/fonts/web/IBMPlexSans-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Plex Serif';
+  src: url('./assets/fonts/web/IBMPlexSerif-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Plex Mono';
+  src: url('./assets/fonts/web/IBMPlexMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Plex Mono';
+  src: url('./assets/fonts/web/IBMPlexMono-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+
+/* Semantic tokens: slate paper + graphite ink; emerald = certified, blue = Bitcoin/links. */
+:root {
+  color-scheme: light;
+  --pm-bg: #f4f6f8;
+  --pm-surface: #ffffff;
+  --pm-sunken: #eaeef2;
+  --pm-ink: #142033;
+  --pm-ink-2: #34445a;
+  --pm-muted: #5b6b80;
+  --pm-line: #d9e0e8;
+  --pm-line-strong: #b8c4d2;
+  --pm-emerald: #047857;
+  --pm-emerald-ink: #065f46;
+  --pm-emerald-soft: #e7f6ef;
+  --pm-blue: #1d4ed8;
+  --pm-blue-soft: #e8eefc;
+  --pm-amber: #92400e;
+  --pm-amber-soft: #fdf3dc;
+  --pm-red: #b42318;
+  --pm-red-soft: #fdecea;
+  --pm-focus: #1d4ed8;
+}
+
+.dark {
+  color-scheme: dark;
+  --pm-bg: #0d1520;
+  --pm-surface: #142030;
+  --pm-sunken: #0a111a;
+  --pm-ink: #e6edf5;
+  --pm-ink-2: #c3cfdc;
+  --pm-muted: #93a3b8;
+  --pm-line: #24344a;
+  --pm-line-strong: #36506e;
+  --pm-emerald: #34d399;
+  --pm-emerald-ink: #6ee7b7;
+  --pm-emerald-soft: #0f2e27;
+  --pm-blue: #8aa8ff;
+  --pm-blue-soft: #16244a;
+  --pm-amber: #f5c26b;
+  --pm-amber-soft: #33270f;
+  --pm-red: #ff8a80;
+  --pm-red-soft: #3a1717;
+  --pm-focus: #8aa8ff;
+}
+
+@theme inline {
+  --font-sans: 'Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Plex Serif', ui-serif, Georgia, serif;
+  --font-mono: 'Plex Mono', ui-monospace, 'Cascadia Mono', monospace;
+  --color-bg: var(--pm-bg);
+  --color-surface: var(--pm-surface);
+  --color-sunken: var(--pm-sunken);
+  --color-ink: var(--pm-ink);
+  --color-ink-2: var(--pm-ink-2);
+  --color-muted: var(--pm-muted);
+  --color-line: var(--pm-line);
+  --color-line-strong: var(--pm-line-strong);
+  --color-emerald: var(--pm-emerald);
+  --color-emerald-ink: var(--pm-emerald-ink);
+  --color-emerald-soft: var(--pm-emerald-soft);
+  --color-blue: var(--pm-blue);
+  --color-blue-soft: var(--pm-blue-soft);
+  --color-amber: var(--pm-amber);
+  --color-amber-soft: var(--pm-amber-soft);
+  --color-red: var(--pm-red);
+  --color-red-soft: var(--pm-red-soft);
+}
+
+html {
+  background: var(--pm-bg);
+  color: var(--pm-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  background: var(--pm-bg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--pm-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@keyframes pm-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes pm-reveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
