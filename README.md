@@ -15,7 +15,7 @@
   <img alt="Zero-Knowledge" src="https://img.shields.io/badge/zero--knowledge-il%20file%20non%20lascia%20il%20browser-142033">
 </p>
 
-<p align="center"><strong><a href="https://jpaladins.github.io/proofmark/">Demo: jpaladins.github.io/proofmark</a></strong></p>
+<p align="center"><strong><a href="https://jpaladins.github.io/proofmark/">jpaladins.github.io/proofmark</a></strong></p>
 
 ---
 
