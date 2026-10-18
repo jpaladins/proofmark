@@ -184,6 +184,30 @@ function drawGradientBar(page: PDFPage) {
   }
 }
 
+const QR_BOX_W = 96
+const QR_SIZE = 70
+const QR_CAPTION_SIZE = 7
+const QR_CAPTION_CAP = QR_CAPTION_SIZE * 0.7
+const QR_GAP = 9
+const QR_PAD = 11
+
+/**
+ * Vertical layout of the QR panel, in points from the top of the box: the code and its caption sit
+ * as one block, centred, with a fixed gap between them. `height` is at least `heroH`.
+ */
+export function qrPanelLayout(heroH: number) {
+  const block = QR_SIZE + QR_GAP + QR_CAPTION_CAP
+  const height = Math.max(heroH, block + 2 * QR_PAD)
+  const qrTop = (height - block) / 2
+  return {
+    height,
+    qrSize: QR_SIZE,
+    qrTop,
+    captionBaseline: qrTop + QR_SIZE + QR_GAP + QR_CAPTION_CAP,
+    captionCapHeight: QR_CAPTION_CAP,
+  }
+}
+
 function drawQr(pen: Pen, text: string, x: number, top: number, size: number) {
   const qr = QRCode.create(text, { errorCorrectionLevel: 'M' })
   const n = qr.modules.size
@@ -274,14 +298,13 @@ function drawPage1(pen: Pen, c: AttestatoContent, sha256: string, d = NORMAL): n
   y -= pen.para(c.subtitle, M, y, CW, f.sans, 9.4, C.ink2) + 8
 
   // Hero: existence box + QR
-  const qrBox = 96
+  const qrBox = QR_BOX_W
   const heroW = CW - qrBox - 12
   const textX = M + 40
   const heroTextW = heroW - 52
-  const heroH = Math.max(
-    qrBox,
+  const heroH = qrPanelLayout(
     16 + pen.wrap(c.hero.heading, f.sansSemiBold, 10.5, heroTextW).length * 14 + pen.wrap(c.hero.body, f.sans, 9, heroTextW).length * 12.8,
-  )
+  ).height
   const hero =
     c.tone === 'confirmed'
       ? { fill: C.emeraldSoft, border: C.emeraldBorder, ink: C.emeraldText, icon: C.emerald,
@@ -295,8 +318,10 @@ function drawPage1(pen: Pen, c: AttestatoContent, sha256: string, d = NORMAL): n
   pen.para(c.hero.body, textX, hy, heroTextW, f.sans, 9, hero.ink)
   const qx = M + heroW + 12
   pen.roundRect(qx, y, qrBox, heroH, 6, C.white, C.line)
-  drawQr(pen, verifyUrl(sha256), qx + 10, y - 8, qrBox - 20)
-  pen.text(c.qrCaption, qx + (qrBox - pen.width(c.qrCaption, f.sans, 6.5)) / 2, y - heroH + 7, f.sans, 6.5, C.muted)
+  const qr = qrPanelLayout(heroH)
+  drawQr(pen, verifyUrl(sha256), qx + (qrBox - qr.qrSize) / 2, y - qr.qrTop, qr.qrSize)
+  const captionW = pen.width(c.qrCaption, f.sans, QR_CAPTION_SIZE)
+  pen.text(c.qrCaption, qx + (qrBox - captionW) / 2, y - qr.captionBaseline, f.sans, QR_CAPTION_SIZE, C.muted)
   y -= heroH + d.gap
 
   let n = 1
