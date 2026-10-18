@@ -190,7 +190,7 @@ export function PrivacyPage() {
           <Code>prova.ots</Code> allegato, che chiunque può controllare con gli strumenti ufficiali di OpenTimestamps.
         </p>
         <p>
-          <strong className="text-ink">Codice aperto.</strong> Tutto il codice è pubblico con licenza MIT ed è lo stesso che
+          <strong className="text-ink">Codice aperto.</strong> Tutto il codice è pubblico con licenza AGPL-3.0 ed è lo stesso che
           viene pubblicato sul sito, tramite un processo automatico visibile su GitHub.
         </p>
       </Section>

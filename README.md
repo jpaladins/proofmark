@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/jpaladins/proofmark/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/jpaladins/proofmark/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/jpaladins/proofmark/actions/workflows/deploy.yml"><img alt="Deploy" src="https://github.com/jpaladins/proofmark/actions/workflows/deploy.yml/badge.svg"></a>
-  <a href="LICENSE"><img alt="Licenza MIT" src="https://img.shields.io/badge/licenza-MIT-047857"></a>
+  <a href="LICENSE"><img alt="Licenza AGPL-3.0" src="https://img.shields.io/badge/licenza-AGPL--3.0-047857"></a>
   <img alt="Zero-Knowledge" src="https://img.shields.io/badge/zero--knowledge-il%20file%20non%20lascia%20il%20browser-142033">
 </p>
 
@@ -94,4 +94,12 @@ Vedi [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Licenza
 
-[MIT](LICENSE). Font IBM Plex con licenza [SIL OFL 1.1](src/assets/fonts/OFL.txt).
+Copyright © 2026 [JPaladins](https://github.com/jpaladins).
+
+ProofMark è software libero, distribuito con licenza [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only).
+
+- Puoi usarlo, studiarlo, modificarlo e ridistribuirlo.
+- Chi distribuisce una copia, anche modificata, **o la mette a disposizione come sito o servizio online** deve renderne disponibile il codice sorgente con la stessa licenza.
+- In base alla sezione 7(b) della licenza, ogni copia o versione modificata deve mantenere visibile in ogni pagina l'attribuzione **«Developed by JPaladins»** con il link a https://github.com/jpaladins (vedi [NOTICE](NOTICE)).
+
+I font IBM Plex sono distribuiti separatamente con licenza [SIL OFL 1.1](src/assets/fonts/OFL.txt).

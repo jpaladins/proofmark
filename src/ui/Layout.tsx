@@ -20,7 +20,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-wrap justify-between gap-3 px-4 py-6 text-sm text-muted sm:px-6">
           <p>
-            ProofMark {APP_VERSION}, open source con licenza MIT. Nessun dato personale raccolto, nessun cookie.
+            ProofMark {APP_VERSION}, open source con licenza AGPL-3.0. Nessun dato personale raccolto, nessun cookie.
           </p>
           <nav aria-label="Informazioni" className="flex flex-wrap gap-x-5 gap-y-2">
             <a
