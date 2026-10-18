@@ -5,3 +5,4 @@ export const VERIFY_URL = `${APP_URL}/verifica`
 /** Address printed on documents and in reminders, without the scheme. */
 export const VERIFY_DISPLAY = VERIFY_URL.replace(/^https:\/\//, '')
 export const REPO_URL = 'https://github.com/jpaladins/proofmark'
+export const DEVELOPER = { name: 'JPaladins', url: 'https://github.com/jpaladins' }

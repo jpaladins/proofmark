@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { APP_VERSION, REPO_URL } from '@/core/app'
+import { APP_VERSION, DEVELOPER, REPO_URL } from '@/core/app'
 import { Header } from './components/Header'
 import { toUrl, useRoute } from './router'
 
@@ -38,6 +38,17 @@ export function Layout({ children }: { children: ReactNode }) {
               Codice sorgente
             </a>
           </nav>
+        </div>
+        <div className="border-t border-line/60">
+          <p className="mx-auto max-w-6xl px-4 py-4 text-center text-xs text-muted sm:px-6">
+            Developed by{' '}
+            <a
+              className="font-medium text-ink-2 underline-offset-4 hover:text-ink hover:underline"
+              href={DEVELOPER.url}
+            >
+              {DEVELOPER.name}
+            </a>
+          </p>
         </div>
       </footer>
     </div>
