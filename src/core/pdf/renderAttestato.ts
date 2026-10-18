@@ -303,9 +303,19 @@ function drawPage1(pen: Pen, c: AttestatoContent, sha256: string, d = NORMAL): n
   const heroW = CW - qrBox - 12
   const textX = M + 40
   const heroTextW = heroW - 52
-  const heroH = qrPanelLayout(
-    16 + pen.wrap(c.hero.heading, f.sansSemiBold, 10.5, heroTextW).length * 14 + pen.wrap(c.hero.body, f.sans, 9, heroTextW).length * 12.8,
-  ).height
+  // An attestation leads with the attested moment, set large; a receipt keeps a heading and text.
+  const stamp = c.hero.stamp
+  const bodySize = stamp ? 8.6 : 9
+  const bodyLead = stamp ? 11.8 : 12.8
+  const bodyLines = pen.wrap(c.hero.body, f.sans, bodySize, heroTextW).length
+  const STAMP_KICKER = 12
+  const STAMP_DATE = 29
+  const STAMP_TIME = 18
+  const STAMP_GAP = 9
+  const textH = stamp
+    ? STAMP_KICKER + STAMP_DATE + STAMP_TIME + STAMP_GAP + bodyLines * bodyLead
+    : pen.wrap(c.hero.heading, f.sansSemiBold, 10.5, heroTextW).length * 14 + bodyLines * bodyLead
+  const heroH = qrPanelLayout(textH + 26).height
   const hero =
     c.tone === 'confirmed'
       ? { fill: C.emeraldSoft, border: C.emeraldBorder, ink: C.emeraldText, icon: C.emerald,
@@ -313,10 +323,23 @@ function drawPage1(pen: Pen, c: AttestatoContent, sha256: string, d = NORMAL): n
       : { fill: C.amberSoft, border: C.amberBorder, ink: C.amberText, icon: C.amber,
           path: 'M 12 2 A 10 10 0 1 0 12.01 2 Z M 12 6 V 12 L 16 14' }
   pen.roundRect(M, y, heroW, heroH, 6, hero.fill, hero.border)
-  pen.page.drawSvgPath(hero.path, { x: M + 10, y: y - 10, scale: 1.15, borderColor: hero.icon, borderWidth: 1.8 })
-  let hy = y - 10
-  hy -= pen.para(c.hero.heading, textX, hy, heroTextW, f.sansSemiBold, 10.5, hero.ink, 1.33) + 2
-  pen.para(c.hero.body, textX, hy, heroTextW, f.sans, 9, hero.ink)
+  if (stamp) {
+    let ty = y - (heroH - textH) / 2
+    pen.page.drawSvgPath(hero.path, { x: M + 10, y: ty, scale: 1.15, borderColor: hero.icon, borderWidth: 1.8 })
+    pen.text(stamp.kicker, textX, ty - 8.5, f.sansMedium, 8.6, hero.ink)
+    ty -= STAMP_KICKER
+    pen.text(stamp.date, textX, ty - 21.5, f.serifSemiBold, 23, hero.ink)
+    ty -= STAMP_DATE
+    pen.text(stamp.time, textX, ty - 12, f.monoMedium, 12.5, hero.ink)
+    pen.text(stamp.note, textX + pen.width(stamp.time, f.monoMedium, 12.5) + 9, ty - 12, f.sans, 8.6, C.muted)
+    ty -= STAMP_TIME + STAMP_GAP
+    pen.para(c.hero.body, textX, ty, heroTextW, f.sans, bodySize, hero.ink, bodyLead / bodySize)
+  } else {
+    pen.page.drawSvgPath(hero.path, { x: M + 10, y: y - 10, scale: 1.15, borderColor: hero.icon, borderWidth: 1.8 })
+    let hy = y - 10
+    hy -= pen.para(c.hero.heading, textX, hy, heroTextW, f.sansSemiBold, 10.5, hero.ink, 1.33) + 2
+    pen.para(c.hero.body, textX, hy, heroTextW, f.sans, bodySize, hero.ink, bodyLead / bodySize)
+  }
   const qx = M + heroW + 12
   pen.roundRect(qx, y, qrBox, heroH, 6, C.white, C.line)
   const qr = qrPanelLayout(heroH)
