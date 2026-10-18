@@ -111,8 +111,7 @@ describe('hero date of the attestation', () => {
     expect(attestation().hero.stamp).toEqual({
       kicker: 'Esistenza attestata al',
       date: '28 maggio 2015',
-      time: '15:41:18 UTC',
-      note: '17:41:18 UTC+2',
+      time: '17:41:18 UTC+2',
     })
   })
 
@@ -122,13 +121,15 @@ describe('hero date of the attestation', () => {
 })
 
 describe('local time zone instead of a fixed Italian time', () => {
-  test('the attested moment is also shown in the device time zone with its UTC offset', () => {
-    expect(attestation('America/New_York').hero.stamp?.note).toBe('11:41:18 UTC-4')
-    expect(attestation('Asia/Kolkata').hero.stamp?.note).toBe('21:11:18 UTC+5:30')
+  test('the attested moment is shown once, in the device time zone with its UTC offset', () => {
+    expect(attestation('America/New_York').hero.stamp?.time).toBe('11:41:18 UTC-4')
+    expect(attestation('Asia/Kolkata').hero.stamp?.time).toBe('21:11:18 UTC+5:30')
+    expect(attestation('UTC').hero.stamp?.time).toBe('15:41:18 UTC')
   })
 
-  test('no second time is shown when the device is on UTC', () => {
-    expect(attestation('UTC').hero.stamp?.note).toBeUndefined()
+  test('the large date follows the same time zone as the time', () => {
+    // 15:41 UTC is already 05:41 of the next day at UTC+14.
+    expect(attestation('Pacific/Kiritimati').hero.stamp).toMatchObject({ date: '29 maggio 2015', time: '05:41:18 UTC+14' })
   })
 
   test('issue date, request time and block time carry the offset', () => {

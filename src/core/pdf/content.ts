@@ -20,7 +20,7 @@ export type AttestatoContent = {
   title: string
   subtitle: string
   /** `stamp` (attestation only) is the attested moment, laid out large in the hero box. */
-  hero: { heading: string; body: string; stamp?: { kicker: string; date: string; time: string; note?: string } }
+  hero: { heading: string; body: string; stamp?: { kicker: string; date: string; time: string } }
   qrCaption: string
   declared?: { tag: string; rows: Row[] }
   subject: { rows: Row[]; hash: string }
@@ -39,8 +39,8 @@ const fmtDate = (d: Date, timeZone: string) =>
   new Intl.DateTimeFormat('it-IT', { timeZone, day: '2-digit', month: '2-digit', year: 'numeric' }).format(d)
 const fmtTime = (d: Date, timeZone: string) =>
   new Intl.DateTimeFormat('it-IT', { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(d)
-const fmtLongDate = (d: Date) =>
-  new Intl.DateTimeFormat('it-IT', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }).format(d)
+const fmtLongDate = (d: Date, timeZone = 'UTC') =>
+  new Intl.DateTimeFormat('it-IT', { timeZone, day: 'numeric', month: 'long', year: 'numeric' }).format(d)
 
 export function formatBytes(size: number): string {
   const units = ['byte', 'KB', 'MB', 'GB', 'TB']
@@ -141,9 +141,9 @@ export function buildAttestatoContent(
           heading: `Esistenza attestata al ${blockHeading}`,
           stamp: blockTime && {
             kicker: 'Esistenza attestata al',
-            date: fmtLongDate(blockTime),
-            time: `${fmtTime(blockTime, 'UTC')} UTC`,
-            ...(utcOffset(blockTime, tz) === 'UTC' ? {} : { note: local(blockTime) }),
+            // One time, in the device time zone with its offset; the date follows the same zone.
+            date: fmtLongDate(blockTime, tz),
+            time: local(blockTime),
           },
           body: `Un archivio con l'impronta SHA-256 riportata sotto esisteva non oltre questa data, come risulta dal blocco Bitcoin #${ots.block} che ne contiene la prova.`,
         }

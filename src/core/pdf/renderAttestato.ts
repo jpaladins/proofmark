@@ -331,7 +331,6 @@ function drawPage1(pen: Pen, c: AttestatoContent, sha256: string, d = NORMAL): n
     pen.text(stamp.date, textX, ty - 21.5, f.serifSemiBold, 23, hero.ink)
     ty -= STAMP_DATE
     pen.text(stamp.time, textX, ty - 12, f.monoMedium, 12.5, hero.ink)
-    if (stamp.note) pen.text(stamp.note, textX + pen.width(stamp.time, f.monoMedium, 12.5) + 9, ty - 12, f.sans, 8.6, C.muted)
     ty -= STAMP_TIME + STAMP_GAP
     pen.para(c.hero.body, textX, ty, heroTextW, f.sans, bodySize, hero.ink, bodyLead / bodySize)
   } else {
