@@ -18,7 +18,8 @@ export type AttestatoContent = {
   issued: string
   title: string
   subtitle: string
-  hero: { heading: string; body: string }
+  /** `stamp` (attestation only) is the attested moment, laid out large in the hero box. */
+  hero: { heading: string; body: string; stamp?: { kicker: string; date: string; time: string; note: string } }
   qrCaption: string
   declared?: { tag: string; rows: Row[] }
   subject: { rows: Row[]; hash: string }
@@ -135,6 +136,12 @@ export function buildAttestatoContent(
     hero: confirmed
       ? {
           heading: `Esistenza attestata al ${blockHeading}`,
+          stamp: blockTime && {
+            kicker: 'Esistenza attestata al',
+            date: fmtLongDate(blockTime),
+            time: `${fmtTime(blockTime, 'UTC')} UTC`,
+            note: `${fmtTime(blockTime)} ora italiana`,
+          },
           body: `Un archivio con l'impronta SHA-256 riportata sotto esisteva non oltre questa data, come risulta dal blocco Bitcoin #${ots.block} che ne contiene la prova.`,
         }
       : {
