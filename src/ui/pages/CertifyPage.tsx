@@ -6,7 +6,7 @@ import type { CertifyDeps } from '@/flow/certify'
 import { defaultCertifyDeps, useCertify } from '@/flow/useCertify'
 import { CertificateCard } from '../components/CertificateCard'
 import { DropZone } from '../components/DropZone'
-import { Fingerprint } from '../components/Fingerprint'
+import { HashProgress } from '../components/HashProgress'
 import { Alert, Button } from '../components/primitives'
 import { Stepper } from '../components/Stepper'
 
@@ -116,14 +116,7 @@ export function CertifyPage({ deps = defaultCertifyDeps }: { deps?: CertifyDeps 
         {started && (
           <div className="mt-10 grid gap-8">
             <Stepper steps={steps} />
-            {(hashing || steps.hash.status === 'done') && (
-              <div className="rounded-xl border border-line bg-surface p-5">
-                <p className="text-sm font-medium text-ink-2">Impronta SHA-256</p>
-                <div className="mt-3">
-                  <Fingerprint progress={steps.hash.progress} />
-                </div>
-              </div>
-            )}
+            {hashing && <HashProgress progress={steps.hash.hashProgress} />}
             {error && (
               <Alert tone="danger" title="La certificazione si è fermata" action={<Button onClick={retry}>Riprova</Button>}>
                 {error}

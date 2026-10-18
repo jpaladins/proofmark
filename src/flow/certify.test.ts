@@ -23,10 +23,13 @@ function fakeDeps(over: Partial<CertifyDeps> = {}): CertifyDeps {
 function recorder() {
   const log: [StepId, StepState['status']][] = []
   const last: Partial<Record<StepId, StepState>> = {}
+  const seen: [StepId, StepState][] = []
   return {
     log,
     last,
+    seen,
     onStep: (id: StepId, s: StepState) => {
+      seen.push([id, s])
       log.push([id, s.status])
       last[id] = s
     },
@@ -39,6 +42,12 @@ describe('runCertification', () => {
     const before = Date.now()
     const res = await runCertification({ file: zip(), declared: { author: 'Ada' } }, fakeDeps(), rec.onStep)
     expect(rec.log.filter(([, s]) => s === 'done').map(([id]) => id)).toEqual(['hash', 'ots', 'cert'])
+    expect(rec.seen.find(([id, st]) => id === 'hash' && st.hashProgress)?.[1].hashProgress).toEqual({
+      bytesDone: 4,
+      total: 4,
+      mbPerSec: 100,
+      etaSec: 0,
+    })
     expect(res.certificate.kind).toBe('ricevuta')
     expect(res.certificate.declared?.author).toBe('Ada')
     expect(res.pdf).toEqual(new Uint8Array([9, 9, 9]))

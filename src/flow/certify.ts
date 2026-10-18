@@ -8,7 +8,13 @@ import { inspectOts } from '@/core/ots/ots'
 import type { FontBytes } from '@/core/pdf/fonts'
 
 export type StepId = 'hash' | 'ots' | 'cert'
-export type StepState = { status: 'idle' | 'active' | 'done' | 'warn' | 'error'; message?: string; progress?: number }
+export type StepState = {
+  status: 'idle' | 'active' | 'done' | 'warn' | 'error'
+  message?: string
+  progress?: number
+  /** Byte-level detail while hashing, for the progress panel. */
+  hashProgress?: HashProgress
+}
 
 export type CertifyResult = {
   certificate: Certificate
@@ -64,7 +70,8 @@ export async function runCertification(
           onStep('hash', {
             status: 'active',
             progress: p.total ? p.bytesDone / p.total : 1,
-            message: `${p.mbPerSec.toFixed(0)} MB/s · ${Math.ceil(p.etaSec)} s rimanenti`,
+            message: `${Math.round((p.total ? p.bytesDone / p.total : 1) * 100)}%`,
+            hashProgress: p,
           }),
         signal,
       )
