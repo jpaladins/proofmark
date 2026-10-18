@@ -38,8 +38,10 @@ function NavLink({ to, children }: { to: Path; children: string }) {
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
       className={cx(
-        'rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3',
-        active ? 'bg-sunken text-ink' : 'text-muted hover:text-ink',
+        'flex-1 rounded-md px-2.5 py-1.5 text-center text-sm font-medium transition-colors min-[420px]:flex-none sm:px-3',
+        active
+          ? 'bg-surface text-ink shadow-sm min-[420px]:bg-sunken min-[420px]:shadow-none'
+          : 'text-muted hover:text-ink',
       )}
     >
       {children}
@@ -66,7 +68,8 @@ export function Header() {
   const { navigate } = useRoute()
   return (
     <header className="border-b border-line bg-surface/80 backdrop-blur supports-[backdrop-filter]:bg-surface/70 sticky top-0 z-20">
-      <div className="mx-auto flex max-w-6xl items-center gap-x-2 px-4 py-3 sm:gap-x-6 sm:px-6">
+      {/* Below 420px the sections drop to a second row of full-width tabs, so the title always fits. */}
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-2 gap-y-2 px-4 py-3 min-[420px]:flex-nowrap sm:gap-x-6 sm:px-6">
         <a
           href={toUrl('/')}
           onClick={(e) => {
@@ -76,10 +79,12 @@ export function Header() {
           className="flex shrink-0 items-center gap-2.5"
         >
           <Logo className="size-8" />
-          <span className="hidden font-serif text-lg font-semibold tracking-tight min-[420px]:inline">ProofMark</span>
-          <span className="sr-only min-[420px]:hidden">ProofMark</span>
+          <span className="font-serif text-lg font-semibold tracking-tight">ProofMark</span>
         </a>
-        <nav aria-label="Sezioni" className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+        <nav
+          aria-label="Sezioni"
+          className="order-last flex w-full items-center gap-1 rounded-lg bg-sunken p-1 min-[420px]:order-none min-[420px]:w-auto min-[420px]:shrink-0 min-[420px]:gap-0.5 min-[420px]:bg-transparent min-[420px]:p-0 sm:gap-1"
+        >
           <NavLink to="/">Certifica</NavLink>
           <NavLink to="/verifica">Verifica</NavLink>
         </nav>
