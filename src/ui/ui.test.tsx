@@ -78,3 +78,10 @@ test('the site title is always visible, not only on wide screens', () => {
   const title = within(brand).getByText('ProofMark')
   expect(title.className).not.toMatch(/(^|\s)(hidden|sr-only)(\s|$)/)
 })
+
+test('the footer credits the developer', () => {
+  render(<App />)
+  const footer = screen.getByRole('contentinfo')
+  expect(footer).toHaveTextContent('Developed by JPaladins')
+  expect(within(footer).getByRole('link', { name: 'JPaladins' })).toHaveAttribute('href', 'https://github.com/jpaladins')
+})
