@@ -126,6 +126,7 @@ describe('checkBitcoin', () => {
     })
     expect(res.check.status).toBe('ok')
     expect(res.check.label).toMatch(/^Confermato nel blocco #123 del /)
+    expect(res.check.label).toMatch(/ UTC([+-]\d{1,2}(:\d{2})?)?$/)
     expect(res.upgraded).toEqual({ ots: upgradedOts, block: 123, blockTime })
   })
 
