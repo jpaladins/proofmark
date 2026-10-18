@@ -4,6 +4,7 @@
 // existence attested at the time of the Bitcoin block).
 import { APP_VERSION, DEVELOPER, VERIFY_DISPLAY } from '@/core/app'
 import type { Certificate } from '@/core/cert/certificate'
+import { proofFileNames } from '@/core/cert/fileNames'
 import { localTimeZone, utcOffset } from '@/core/time'
 
 export type Row = { label: string; value: string; mono?: boolean; note?: string }
@@ -71,6 +72,7 @@ export function buildAttestatoContent(
   const blockTime = ots.blockTime ? new Date(ots.blockTime) : undefined
   const name = cert.file.name
   const docWord = confirmed ? 'attestato' : 'ricevuta'
+  const files = proofFileNames(cert)
 
   const declaredRows: Row[] = []
   if (cert.declared?.author) declaredRows.push({ label: 'Autore', value: cert.declared.author })
@@ -117,9 +119,9 @@ export function buildAttestatoContent(
     ...(confirmed
       ? []
       : [
-          `Questa ricevuta non attesta una data. Dopo qualche ora torna su ${VERIFY_DISPLAY}, carica l'archivio e questa ricevuta e scarica l'attestato. Conserva poi anche l'attestato e la sua prova.ots.`,
+          `Questa ricevuta non attesta una data. Dopo qualche ora torna su ${VERIFY_DISPLAY}, carica l'archivio e questa ricevuta e scarica l'attestato. Conserva poi anche l'attestato e la sua prova Bitcoin aggiornata (.ots).`,
         ]),
-    `Conserva insieme: l'archivio .zip originale, questo ${docWord} e il file prova.ots.`,
+    `Conserva insieme: l'archivio .zip originale, questo ${docWord} e il file .ots con lo stesso nome dell'archivio.`,
     'Fai più copie su supporti diversi (disco esterno, cloud).',
     "Non rinominare l'archivio: il nome non incide sull'impronta, ma semplifica la verifica.",
   ]
@@ -191,8 +193,8 @@ export function buildAttestatoContent(
         {
           title: "2. Verifica l'ancoraggio Bitcoin (client OpenTimestamps: opentimestamps.org)",
           code: [
-            ...(confirmed ? [] : ['ots upgrade prova.ots   # dopo la conferma, una volta']),
-            `ots verify prova.ots -f "${name}"`,
+            ...(confirmed ? [] : [`ots upgrade "${files.ots}"   # dopo la conferma, una volta`]),
+            `ots verify "${files.ots}" -f "${name}"`,
           ],
         },
         {
@@ -228,7 +230,7 @@ export function buildAttestatoContent(
       },
     ],
     footer: [
-      'La prova crittografica è il file prova.ots allegato, verificabile con OpenTimestamps',
+      'La prova crittografica è il file .ots allegato a questo PDF, verificabile con OpenTimestamps',
       `Generato localmente nel browser · ProofMark v${APP_VERSION} · open source (AGPL-3.0)`,
     ],
     sections: {

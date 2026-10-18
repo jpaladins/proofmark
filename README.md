@@ -76,9 +76,9 @@ L'app gira su http://localhost:5173/proofmark/.
 certutil -hashfile archivio.zip SHA256      # Windows
 shasum -a 256 archivio.zip                  # macOS / Linux
 
-# 2. prova Bitcoin (client: https://opentimestamps.org)
-ots upgrade prova.ots                       # una volta, dopo la conferma
-ots verify prova.ots -f archivio.zip
+# 2. prova Bitcoin: il file .ots ha lo stesso nome dell'archivio (client: https://opentimestamps.org)
+ots upgrade archivio.ots                    # una volta, dopo la conferma
+ots verify archivio.ots -f archivio.zip
 ```
 
 ## Limiti

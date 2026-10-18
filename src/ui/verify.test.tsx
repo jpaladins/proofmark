@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { PENDING_HASH, PENDING_OTS, pendingCert } from '@/test/certFixtures'
+import { confirmedCert, PENDING_HASH, PENDING_OTS, pendingCert } from '@/test/certFixtures'
 import type { Check } from '@/core/verify/check'
 import { downloadBytes } from './download'
 import { VerifyPage, type VerifyPageDeps } from './pages/VerifyPage'
@@ -29,7 +29,7 @@ function fakeDeps(over: Partial<VerifyPageDeps> = {}): VerifyPageDeps {
       check: { id: 'bitcoin', status: 'warn', label: 'Conferma non ancora disponibile, riprova tra qualche ora' } as Check,
     })),
     buildAttestato: vi.fn(async () => ({
-      certificate: pendingCert(),
+      certificate: confirmedCert(),
       pdf: new Uint8Array([1]),
       json: '{}',
       ots: new Uint8Array([2]),

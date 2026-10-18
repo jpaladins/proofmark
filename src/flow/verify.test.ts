@@ -48,6 +48,17 @@ describe('loadEvidence', () => {
     expect(ev.pdf).toBeDefined()
   })
 
+  test('still reads PDFs issued before the rename (prova.ots, certificato.json)', async () => {
+    const { PDFDocument } = await import('pdf-lib')
+    const legacy = await PDFDocument.create()
+    legacy.addPage()
+    await legacy.attach(new Uint8Array(PENDING_OTS), 'prova.ots', { mimeType: 'application/vnd.opentimestamps.v1' })
+    await legacy.attach(new TextEncoder().encode(JSON.stringify(pendingCert())), 'certificato.json', { mimeType: 'application/json' })
+    const ev = await loadEvidence(new File([new Uint8Array(await legacy.save())], 'vecchio.pdf'))
+    expect(ev.ots).toEqual(PENDING_OTS)
+    expect(ev.cert.kind).toBe('ricevuta')
+  })
+
   test('rejects a PDF without the ProofMark attachments', async () => {
     const { PDFDocument } = await import('pdf-lib')
     const blank = await PDFDocument.create()
