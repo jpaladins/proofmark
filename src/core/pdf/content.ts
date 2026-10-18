@@ -2,7 +2,7 @@
 // so the copy can be tested without parsing PDF content streams. Two documents share the layout:
 // the receipt (ricevuta, proof still pending: no date attested) and the attestation (attestato,
 // existence attested at the time of the Bitcoin block).
-import { APP_VERSION, VERIFY_DISPLAY } from '@/core/app'
+import { APP_VERSION, DEVELOPER, VERIFY_DISPLAY } from '@/core/app'
 import type { Certificate } from '@/core/cert/certificate'
 
 export type Row = { label: string; value: string; mono?: boolean; note?: string }
@@ -11,6 +11,8 @@ export type VerifyStep = { title: string; code?: string[]; text?: string }
 
 export type AttestatoContent = {
   id: string
+  /** Credit printed in small capitals next to the ProofMark name. */
+  brandCredit: string
   docLabel: string
   tone: 'pending' | 'confirmed'
   issued: string
@@ -122,6 +124,7 @@ export function buildAttestatoContent(
 
   return {
     id: cert.id,
+    brandCredit: `BY ${DEVELOPER.name.toUpperCase()}`,
     docLabel: confirmed ? 'Attestato n.' : 'Ricevuta n.',
     tone: confirmed ? 'confirmed' : 'pending',
     issued: `Emesso il ${fmtDate(created)} alle ${fmtTime(created)} (Europe/Rome)`,
