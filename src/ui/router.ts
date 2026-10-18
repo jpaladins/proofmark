@@ -2,6 +2,18 @@ import { useCallback, useSyncExternalStore } from 'react'
 
 export type Path = '/' | '/verifica'
 const NAV_EVENT = 'pm:navigate'
+/** Site prefix on GitHub Pages ('/proofmark'), '' when served from the root. */
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, '')
+
+/** The URL path for an app page, including the site prefix. */
+export function toUrl(path: Path): string {
+  return path === '/' ? `${BASE}/` : `${BASE}${path}`
+}
+
+function pageOf(pathname: string): Path {
+  const inner = pathname.startsWith(BASE) ? pathname.slice(BASE.length) : pathname
+  return inner.replace(/\/+$/, '') === '/verifica' ? '/verifica' : '/'
+}
 
 const subscribe = (cb: () => void) => {
   window.addEventListener('popstate', cb)
@@ -17,8 +29,9 @@ const subscribe = (cb: () => void) => {
 const snapshot = () => window.location.pathname + window.location.hash
 
 export function navigate(to: Path) {
-  if (window.location.pathname === to && !window.location.hash) return
-  window.history.pushState(null, '', to)
+  const url = toUrl(to)
+  if (window.location.pathname === url && !window.location.hash) return
+  window.history.pushState(null, '', url)
   window.dispatchEvent(new Event(NAV_EVENT))
   window.scrollTo?.({ top: 0 })
 }
@@ -27,6 +40,6 @@ export function navigate(to: Path) {
 export function useRoute(): { path: Path; navigate: (p: Path) => void; hashParams: URLSearchParams } {
   const current = useSyncExternalStore(subscribe, snapshot, () => '/')
   const [pathname, hash = ''] = current.split('#')
-  const path: Path = pathname.replace(/\/+$/, '') === '/verifica' ? '/verifica' : '/'
+  const path = pageOf(pathname)
   return { path, navigate: useCallback((p: Path) => navigate(p), []), hashParams: new URLSearchParams(hash) }
 }

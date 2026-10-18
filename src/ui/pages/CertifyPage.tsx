@@ -59,8 +59,9 @@ export function CertifyPage({ deps = defaultCertifyDeps }: { deps?: CertifyDeps 
           Dimostra che il tuo lavoro esisteva oggi
         </h1>
         <p className="mt-5 max-w-[60ch] text-lg leading-relaxed text-ink-2">
-          Raccogli il progetto in un archivio .zip e trascinalo qui. Il browser ne calcola l'impronta, DigiCert la marca
-          con data e ora e la blockchain Bitcoin la registra. Ricevi un attestato PDF verificabile da chiunque.
+          Raccogli il progetto in un archivio .zip e trascinalo qui. Il browser ne calcola l'impronta e la registra sulla
+          blockchain Bitcoin. Ricevi subito una ricevuta e, dopo qualche ora, un attestato con la data certificata dalla
+          blockchain, verificabile da chiunque.
         </p>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
@@ -101,8 +102,8 @@ export function CertifyPage({ deps = defaultCertifyDeps }: { deps?: CertifyDeps 
         <p className="mt-3 break-all font-mono text-xs text-muted">9f2c41a7e03b5d18c6a0f2e471b9d3c508e6a4f2d1c7b0935e2a8f61c4d07b3e</p>
         <h2 className="mt-6 font-semibold text-ink">Cosa ricevi</h2>
         <p className="mt-2">
-          Un attestato PDF sigillato, un certificato JSON e le prove grezze per verificarle con openssl e OpenTimestamps,
-          anche senza ProofMark.
+          Subito una ricevuta PDF con la prova OpenTimestamps. Dopo la conferma Bitcoin, di solito entro qualche ora,
+          l'attestato con la data del blocco. Le prove si verificano con OpenTimestamps anche senza ProofMark.
         </p>
       </aside>
     </div>

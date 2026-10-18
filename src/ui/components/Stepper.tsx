@@ -4,16 +4,14 @@ import { cx } from '../cx'
 
 const STEP_LABELS: Record<StepId, string> = {
   hash: 'Calcolo Hash',
-  tsa: 'Marca DigiCert',
   ots: 'Ancoraggio Bitcoin',
-  cert: 'Certificato Generato',
+  cert: 'Ricevuta Generata',
 }
-const ORDER: StepId[] = ['hash', 'tsa', 'ots', 'cert']
+const ORDER: StepId[] = ['hash', 'ots', 'cert']
 const IDLE_HINT: Record<StepId, string> = {
   hash: 'Impronta SHA-256 nel browser',
-  tsa: 'Marca temporale RFC 3161',
   ots: 'OpenTimestamps',
-  cert: 'PDF sigillato e JSON',
+  cert: 'Ricevuta PDF e JSON',
 }
 
 function Marker({ n, status }: { n: number; status: StepState['status'] }) {
@@ -40,7 +38,7 @@ const STATUS_TEXT: Record<StepState['status'], string> = {
 
 export function Stepper({ steps }: { steps: Record<StepId, StepState> }) {
   return (
-    <ol className="grid gap-3 sm:grid-cols-4 sm:gap-0" aria-label="Avanzamento della certificazione">
+    <ol className="grid gap-3 sm:grid-cols-3 sm:gap-0" aria-label="Avanzamento della certificazione">
       {ORDER.map((id, i) => {
         const s = steps[id]
         const progress = id === 'hash' && s.status === 'active' ? s.progress : undefined

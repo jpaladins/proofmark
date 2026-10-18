@@ -5,58 +5,49 @@
 <h1 align="center">ProofMark</h1>
 
 <p align="center">
-  Prova di esistenza per archivi ZIP: marca temporale RFC 3161 di DigiCert e ancoraggio sulla blockchain Bitcoin, calcolati interamente nel tuo browser.
+  Prova di esistenza per archivi ZIP, ancorata alla blockchain Bitcoin con OpenTimestamps e calcolata interamente nel tuo browser.
 </p>
 
 <p align="center">
   <a href="https://github.com/jpaladins/proofmark/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/jpaladins/proofmark/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/jpaladins/proofmark/actions/workflows/deploy.yml"><img alt="Deploy" src="https://github.com/jpaladins/proofmark/actions/workflows/deploy.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="Licenza MIT" src="https://img.shields.io/badge/licenza-MIT-047857"></a>
-  <a href="https://proofmark.jpaladins.ovh"><img alt="Cloudflare Pages" src="https://img.shields.io/badge/deploy-Cloudflare%20Pages-1d4ed8"></a>
   <img alt="Zero-Knowledge" src="https://img.shields.io/badge/zero--knowledge-il%20file%20non%20lascia%20il%20browser-142033">
 </p>
 
-<p align="center"><strong><a href="https://proofmark.jpaladins.ovh">Demo: proofmark.jpaladins.ovh</a></strong></p>
+<p align="center"><strong><a href="https://jpaladins.github.io/proofmark/">Demo: jpaladins.github.io/proofmark</a></strong></p>
 
 ---
 
 ## Cosa fa
 
-Trascini l'archivio `.zip` del tuo progetto. ProofMark:
+Trascini l'archivio `.zip` del tuo progetto e ProofMark:
 
 1. calcola l'impronta **SHA-256** nel browser, in un Web Worker e a blocchi, anche per archivi da molti GB;
-2. fa marcare l'impronta da **DigiCert** con una marca temporale **RFC 3161**;
-3. la registra sulla blockchain **Bitcoin** tramite **OpenTimestamps**;
-4. genera un **attestato PDF** sigillato con una seconda marca DigiCert (PAdES, verificabile in Adobe Acrobat) che contiene in allegato le prove grezze, più un **certificato JSON**.
+2. la invia ai calendari **OpenTimestamps**, che la scrivono in un blocco della blockchain **Bitcoin**;
+3. ti consegna subito una **ricevuta di registrazione** (PDF + JSON) con la prova `.ots` allegata. La ricevuta non attesta ancora una data;
+4. dopo la conferma, di solito entro qualche ora, nella pagina **Verifica** genera l'**attestato di esistenza**. L'attestato riporta la data del blocco Bitcoin, letta dalla blockchain e mai dal file caricato.
 
-La sezione **Verifica** ricalcola l'impronta e controlla firme, catena di certificati e sigillo del PDF **senza connessione**. La rete serve solo per la conferma Bitcoin e per scaricare l'**attestato aggiornato (rev. 2)** quando il blocco è stato minato.
+La pagina **Verifica** controlla anche l'archivio contro una ricevuta o un attestato. Il confronto con la prova avviene offline; la rete serve solo per leggere la conferma dalla blockchain.
 
-> L'archivio non viene mai caricato: dal browser escono soltanto l'impronta (32 byte) verso DigiCert e un suo derivato non reversibile verso i calendari OpenTimestamps.
+> L'archivio non viene mai caricato. Dal browser esce solo un derivato non reversibile dell'impronta, inviato ai calendari OpenTimestamps.
 
 ## Architettura
 
+Il sito è statico al 100%: non c'è codice lato server.
+
 ```
-Browser (tutto il lavoro)                      Cloudflare Pages
-┌────────────────────────────────────┐         ┌──────────────────────────────┐
-│ React UI (Vite, TS, Tailwind)      │         │ asset statici (dist/)        │
-│  ├─ hash.worker.ts  SHA-256 stream │         │                              │
-│  ├─ tsa/   TimeStampReq ───────────┼─ POST ─▶│ functions/api/tsa.ts ────────┼─▶ timestamp.digicert.com
-│  ├─ ots/   OpenTimestamps ─────────┼─────────┼──────────────────────────────┼─▶ calendari OpenTimestamps
-│  ├─ pdf/   pdf-lib + sigillo PAdES │         └──────────────────────────────┘
-│  └─ verify/ pkijs, offline ────────┼──── (opzionale) ───────────────────────▶ blockstream.info (blocchi)
-└────────────────────────────────────┘
+Browser
+├─ React UI (Vite, TS, Tailwind)
+├─ hash.worker.ts   SHA-256 a blocchi (hash-wasm)
+├─ core/ots/        client OpenTimestamps ──────▶ calendari OpenTimestamps (CORS)
+├─ core/pdf/        ricevuta e attestato (pdf-lib)
+└─ flow/verify.ts   verifica ─────────(online)──▶ blockstream.info (blocchi Bitcoin)
 ```
 
-- **`functions/api/tsa.ts`**: l'unico codice lato server. Inoltra a DigiCert la richiesta RFC 3161 (circa 60 byte), perché DigiCert risponde solo in HTTP e senza CORS. Accetta solo `application/timestamp-query` fino a 1 KB e non registra nulla.
-- **`src/core/`**: logica pura e testata.
-  - `hash/`: SHA-256 a blocchi con `hash-wasm`.
-  - `tsa/`: codifica RFC 3161 con `pkijs`.
-  - `verify/`: verifica di firma CMS e catena fino a *DigiCert Trusted Root G4*, incluso e verificato tramite fingerprint.
-  - `ots/`: client OpenTimestamps nativo.
-  - `pdf/`: attestato e sigillo PAdES.
-  - `cert/`: modello del certificato.
-- **`src/flow/`**: sequenza di certificazione e verifica.
-- **`src/ui/`**: interfaccia.
-- **CSP restrittiva** in `public/_headers`: script solo dal sito, connessioni solo verso `/api/tsa`, calendari OpenTimestamps e Blockstream.
+- `src/core/`: logica pura e testata. Contiene `hash/`, `ots/` (codec e client OpenTimestamps nativi), `pdf/` e `cert/` (modello ricevuta/attestato).
+- `src/flow/`: sequenze di certificazione e verifica. `src/ui/`: interfaccia.
+- La CSP è inserita come `<meta>` in fase di build (`src/csp.ts`), perché GitHub Pages non permette header personalizzati.
 
 ## Sviluppo locale
 
@@ -67,14 +58,7 @@ npm ci
 npm run dev
 ```
 
-`npm run dev` avvia solo il frontend. Per provare anche la marca DigiCert serve la Pages Function:
-
-```bash
-npm run build
-npm run pages:dev
-```
-
-L'app è poi disponibile su http://localhost:8788.
+L'app gira su http://localhost:5173/proofmark/.
 
 | Comando | Cosa fa |
 |---|---|
@@ -82,8 +66,8 @@ L'app è poi disponibile su http://localhost:8788.
 | `npm run typecheck` | Controllo dei tipi TypeScript |
 | `npm run lint` | Lint (oxlint) |
 | `npm run build` | Build di produzione in `dist/` |
-| `bash scripts/make-fixtures.sh` | Rigenera le fixture DigiCert reali e verifica il fingerprint della radice |
-| `PM_SAMPLES=1 npx vitest run scripts` | Genera attestati di esempio in `out/` (uno sigillato con DigiCert reale) |
+| `npm run preview` | Serve `dist/` su http://localhost:4173/proofmark/ |
+| `PM_SAMPLES=1 npx vitest run scripts` | Genera una ricevuta e un attestato di esempio in `out/` |
 
 ## Verifica indipendente (senza ProofMark)
 
@@ -92,18 +76,16 @@ L'app è poi disponibile su http://localhost:8788.
 certutil -hashfile archivio.zip SHA256      # Windows
 shasum -a 256 archivio.zip                  # macOS / Linux
 
-# 2. marca DigiCert (prova.tsr è allegata al PDF e inclusa nel JSON)
-openssl ts -verify -digest <impronta> -in prova.tsr -token_in -CAfile DigiCertTrustedRootG4.pem
-
-# 3. ancoraggio Bitcoin
-ots upgrade prova.ots
+# 2. prova Bitcoin (client: https://opentimestamps.org)
+ots upgrade prova.ots                       # una volta, dopo la conferma
 ots verify prova.ots -f archivio.zip
 ```
 
 ## Limiti
 
-- Il servizio pubblico `timestamp.digicert.com` **non** è un servizio di validazione temporale qualificato ai sensi del Regolamento (UE) 910/2014 (eIDAS). L'attestato è un elemento di prova di anteriorità liberamente valutabile, non una validazione temporale elettronica qualificata.
-- L'attestato dimostra che l'archivio esisteva non oltre una certa data. Non dimostra chi ne sia l'autore. Autore e titolo sono dati dichiarati dall'utente.
+- La data è quella del blocco Bitcoin, con una precisione di circa due ore. La conferma arriva di solito entro qualche ora dalla richiesta.
+- L'attestato dimostra che l'archivio esisteva non oltre quella data. Non dimostra chi ne sia l'autore: autore e titolo sono dati dichiarati.
+- Non è una validazione temporale elettronica qualificata ai sensi del Regolamento (UE) 910/2014 (eIDAS). È un elemento di prova liberamente valutabile.
 - Conserva lo `.zip` **esattamente com'è**: ricomprimere gli stessi file produce un'impronta diversa.
 
 ## Pubblicazione

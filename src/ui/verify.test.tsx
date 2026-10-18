@@ -1,9 +1,8 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { fixtureText } from '@/test/fixtures'
-import { pendingCert, TSA } from '@/test/certFixtures'
-import type { Check } from '@/core/verify/verifyToken'
+import { PENDING_HASH, PENDING_OTS, pendingCert } from '@/test/certFixtures'
+import type { Check } from '@/core/verify/check'
 import { downloadBytes } from './download'
 import { VerifyPage, type VerifyPageDeps } from './pages/VerifyPage'
 
@@ -12,27 +11,26 @@ vi.mock('./download', async (importOriginal) => ({
   downloadBytes: vi.fn(),
 }))
 
-const HASH = fixtureText('data.sha256')
+const HASH = PENDING_HASH
 const PK = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1])
 const zip = () => new File([PK], 'opera.zip')
-const json = () => new File(['{}'], 'opera_certificato.json', { type: 'application/json' })
+const json = () => new File(['{}'], 'opera_ricevuta.json', { type: 'application/json' })
 const OK: Check[] = [
   { id: 'hash', status: 'ok', label: "L'impronta dell'archivio corrisponde al certificato" },
-  { id: 'signature', status: 'ok', label: 'Firma della marca temporale valida' },
+  { id: 'ots-hash', status: 'ok', label: 'La prova Bitcoin si riferisce a questo archivio' },
 ]
 
 function fakeDeps(over: Partial<VerifyPageDeps> = {}): VerifyPageDeps {
   return {
     hashFile: vi.fn(async () => HASH),
-    loadEvidence: vi.fn(async () => ({ cert: pendingCert(), tsr: TSA.token })),
+    loadEvidence: vi.fn(async () => ({ cert: pendingCert(), ots: PENDING_OTS })),
     verifyOffline: vi.fn(async () => OK),
     checkBitcoin: vi.fn(async () => ({
       check: { id: 'bitcoin', status: 'warn', label: 'Conferma non ancora disponibile, riprova tra qualche ora' } as Check,
     })),
-    buildRevision2: vi.fn(async () => ({
+    buildAttestato: vi.fn(async () => ({
       certificate: pendingCert(),
       pdf: new Uint8Array([1]),
-      pdfSealed: true,
       json: '{}',
       ots: new Uint8Array([2]),
     })),
@@ -41,7 +39,7 @@ function fakeDeps(over: Partial<VerifyPageDeps> = {}): VerifyPageDeps {
 }
 
 const zipInput = () => screen.getByLabelText('Seleziona archivio .zip')
-const evidenceInput = () => screen.getByLabelText('Seleziona attestato PDF o certificato JSON')
+const evidenceInput = () => screen.getByLabelText('Seleziona ricevuta o attestato (PDF o JSON)')
 
 afterEach(() => {
   window.history.replaceState(null, '', '/')
@@ -52,7 +50,7 @@ describe('VerifyPage', () => {
   test('shows the two labelled slots', () => {
     render(<VerifyPage deps={fakeDeps()} />)
     expect(screen.getByText('1. Archivio .zip')).toBeInTheDocument()
-    expect(screen.getByText('2. Attestato PDF o certificato JSON')).toBeInTheDocument()
+    expect(screen.getByText('2. Ricevuta o attestato (PDF o JSON)')).toBeInTheDocument()
   })
 
   test('enables Verifica only when both slots are filled', async () => {
@@ -80,7 +78,7 @@ describe('VerifyPage', () => {
   })
 
   test('with a QR fragment, compares the archive alone against the expected hash', async () => {
-    window.history.replaceState(null, '', `/verifica#sha256=${HASH}`)
+    window.history.replaceState(null, '', `/proofmark/verifica#sha256=${HASH}`)
     const user = userEvent.setup()
     const deps = fakeDeps()
     render(<VerifyPage deps={deps} />)
@@ -92,7 +90,7 @@ describe('VerifyPage', () => {
     expect(deps.verifyOffline).not.toHaveBeenCalled()
   })
 
-  test('offers the updated attestation only after a confirmed Bitcoin check', async () => {
+  test('offers the attestation only after a confirmed Bitcoin check', async () => {
     const user = userEvent.setup()
     const deps = fakeDeps()
     render(<VerifyPage deps={deps} />)
@@ -101,18 +99,18 @@ describe('VerifyPage', () => {
     await user.click(screen.getByRole('button', { name: 'Verifica' }))
     await user.click(await screen.findByRole('button', { name: 'Controlla conferma Bitcoin (richiede connessione)' }))
     expect(await screen.findByText('Conferma non ancora disponibile, riprova tra qualche ora')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Genera attestato aggiornato' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Genera attestato' })).toBeNull()
 
     vi.mocked(deps.checkBitcoin).mockResolvedValueOnce({
       check: { id: 'bitcoin', status: 'ok', label: 'Confermato nel blocco #123 del 17 ottobre 2026' },
       upgraded: { ots: new Uint8Array([2]), block: 123, blockTime: new Date() },
     })
     await user.click(screen.getByRole('button', { name: 'Controlla conferma Bitcoin (richiede connessione)' }))
-    await user.click(await screen.findByRole('button', { name: 'Genera attestato aggiornato' }))
-    expect(deps.buildRevision2).toHaveBeenCalled()
+    await user.click(await screen.findByRole('button', { name: 'Genera attestato' }))
+    expect(deps.buildAttestato).toHaveBeenCalled()
   })
 
-  test('offers each updated file as its own download', async () => {
+  test('offers each attestation file as its own download', async () => {
     const user = userEvent.setup()
     const deps = fakeDeps({
       checkBitcoin: vi.fn(async () => ({
@@ -125,23 +123,23 @@ describe('VerifyPage', () => {
     await user.upload(evidenceInput(), json())
     await user.click(screen.getByRole('button', { name: 'Verifica' }))
     await user.click(await screen.findByRole('button', { name: 'Controlla conferma Bitcoin (richiede connessione)' }))
-    await user.click(await screen.findByRole('button', { name: 'Genera attestato aggiornato' }))
+    await user.click(await screen.findByRole('button', { name: 'Genera attestato' }))
     expect(downloadBytes).not.toHaveBeenCalled()
 
-    await user.click(await screen.findByRole('button', { name: 'Scarica attestato PDF aggiornato' }))
+    await user.click(await screen.findByRole('button', { name: 'Scarica attestato PDF' }))
     expect(downloadBytes).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(downloadBytes).mock.calls[0][1]).toMatch(/_attestato_R2\.pdf$/)
-    await user.click(screen.getByRole('button', { name: 'Scarica certificato JSON aggiornato' }))
-    expect(vi.mocked(downloadBytes).mock.calls[1][1]).toMatch(/_certificato_R2\.json$/)
+    expect(vi.mocked(downloadBytes).mock.calls[0][1]).toMatch(/_attestato\.pdf$/)
+    await user.click(screen.getByRole('button', { name: 'Scarica attestato JSON' }))
+    expect(vi.mocked(downloadBytes).mock.calls[1][1]).toMatch(/_attestato\.json$/)
     await user.click(screen.getByRole('button', { name: 'Scarica prova Bitcoin (.ots)' }))
     expect(vi.mocked(downloadBytes).mock.calls[2][1]).toMatch(/\.ots$/)
     expect(downloadBytes).toHaveBeenCalledTimes(3)
-    expect(deps.buildRevision2).toHaveBeenCalledTimes(1)
+    expect(deps.buildAttestato).toHaveBeenCalledTimes(1)
   })
 
   test.each([
     ['archive', () => zipInput(), () => new File([PK], 'altro.zip')],
-    ['evidence', () => evidenceInput(), () => new File(['{}'], 'altro_certificato.json', { type: 'application/json' })],
+    ['evidence', () => evidenceInput(), () => new File(['{}'], 'altro_ricevuta.json', { type: 'application/json' })],
   ])('choosing a new %s clears the previous result', async (_, getInput, file) => {
     const user = userEvent.setup()
     render(<VerifyPage deps={fakeDeps()} />)
@@ -161,11 +159,11 @@ describe('VerifyPage', () => {
     const user = userEvent.setup({ applyAccept: false })
     render(<VerifyPage deps={fakeDeps()} />)
     await user.upload(evidenceInput(), new File(['x'], 'note.txt'))
-    expect(await screen.findByText("Carica l'attestato PDF o il certificato JSON di ProofMark")).toBeInTheDocument()
+    expect(await screen.findByText("Carica la ricevuta o l'attestato di ProofMark (PDF o JSON)")).toBeInTheDocument()
   })
 })
 
-test('never offers the updated attestation when an offline check failed', async () => {
+test('never offers the attestation when an offline check failed', async () => {
   const user = userEvent.setup()
   const deps = fakeDeps({
     verifyOffline: vi.fn(async () => [{ id: 'hash', status: 'fail', label: 'diverso' }] as Check[]),
@@ -180,5 +178,5 @@ test('never offers the updated attestation when an offline check failed', async 
   await user.click(screen.getByRole('button', { name: 'Verifica' }))
   await user.click(await screen.findByRole('button', { name: 'Controlla conferma Bitcoin (richiede connessione)' }))
   await screen.findByText('Confermato nel blocco #1')
-  expect(screen.queryByRole('button', { name: 'Genera attestato aggiornato' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Genera attestato' })).toBeNull()
 })

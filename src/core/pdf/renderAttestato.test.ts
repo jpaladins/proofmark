@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { decodePDFRawStream, PDFArray, PDFDocument, PDFRawStream, type PDFPage } from 'pdf-lib'
 import { describe, expect, test } from 'vitest'
-import { confirmedCert, pendingCert, PENDING_OTS, TSA, testFonts, worstCaseCert } from '@/test/certFixtures'
+import { CONFIRMED_OTS, confirmedCert, pendingCert, PENDING_OTS, testFonts, worstCaseCert } from '@/test/certFixtures'
 import { extractAttachments, renderAttestato, verifyUrl } from './renderAttestato'
 
 const fonts = testFonts()
@@ -18,32 +18,37 @@ function textBaselines(page: PDFPage): number[] {
 }
 
 describe('renderAttestato', () => {
-  test('renders two A4 pages with metadata', async () => {
+  test('renders a receipt on two A4 pages with metadata', async () => {
     const cert = pendingCert({ author: 'Ada', title: 'Opera' })
-    const doc = await renderAttestato(cert, { tsr: TSA.token, ots: PENDING_OTS }, { fonts })
+    const doc = await renderAttestato(cert, { ots: PENDING_OTS }, { fonts })
     expect(doc.getPageCount()).toBe(2)
     const { width, height } = doc.getPage(0).getSize()
     expect(width).toBeCloseTo(595.28, 1)
     expect(height).toBeCloseTo(841.89, 1)
+    expect(doc.getTitle()).toBe(`Ricevuta di registrazione — ${cert.id}`)
+  })
+
+  test('titles the attestation and renders it on two pages', async () => {
+    const cert = confirmedCert()
+    const doc = await renderAttestato(cert, { ots: CONFIRMED_OTS }, { fonts })
+    expect(doc.getPageCount()).toBe(2)
     expect(doc.getTitle()).toBe(`Attestato di Esistenza Digitale — ${cert.id}`)
   })
 
-  test('embeds the proofs and the JSON certificate as attachments', async () => {
+  test('embeds the Bitcoin proof and the JSON certificate as attachments', async () => {
     const cert = pendingCert()
-    const doc = await renderAttestato(cert, { tsr: TSA.token, ots: PENDING_OTS }, { fonts })
+    const doc = await renderAttestato(cert, { ots: PENDING_OTS }, { fonts })
     const files = await extractAttachments(await doc.save())
-    expect(Object.keys(files).sort()).toEqual(['certificato.json', 'prova.ots', 'prova.tsr'])
-    expect(files['prova.tsr']).toEqual(TSA.token)
+    expect(Object.keys(files).sort()).toEqual(['certificato.json', 'prova.ots'])
+    expect(files['prova.ots']).toEqual(PENDING_OTS)
     expect(JSON.parse(new TextDecoder().decode(files['certificato.json'])).id).toBe(cert.id)
   })
 
-  test('renders a confirmed revision 2', async () => {
-    const doc = await renderAttestato(confirmedCert(), { tsr: TSA.token, ots: PENDING_OTS }, { fonts })
-    expect(doc.getPageCount()).toBe(2)
-  })
-
-  test.each([true, false])('keeps the longest accepted inputs clear of the footer (sealed: %s)', async (sealed) => {
-    const doc = await renderAttestato(worstCaseCert(), { tsr: TSA.token, ots: PENDING_OTS }, { fonts, sealed })
+  test.each([
+    ['receipt', () => worstCaseCert(), PENDING_OTS],
+    ['attestation', () => confirmedCert({ author: 'W'.repeat(120), title: 'M'.repeat(120) }), CONFIRMED_OTS],
+  ] as const)('keeps the longest accepted inputs clear of the footer (%s)', async (_kind, make, ots) => {
+    const doc = await renderAttestato(make(), { ots }, { fonts })
     const saved = await PDFDocument.load(await doc.save())
     for (const page of saved.getPages()) {
       // The footer rule sits at y = 46 and its text at y = 34; content boxes need room above the rule.
@@ -55,7 +60,7 @@ describe('renderAttestato', () => {
 
   test('survives characters the fonts cannot draw (emoji, CJK)', async () => {
     const cert = pendingCert({ author: 'Zoë Łukasz 😀 山田', title: 'Ünïcødé ✓' })
-    const doc = await renderAttestato(cert, { tsr: TSA.token }, { fonts })
+    const doc = await renderAttestato(cert, { ots: PENDING_OTS }, { fonts })
     expect((await doc.save()).length).toBeGreaterThan(10_000)
   })
 
@@ -66,11 +71,6 @@ describe('renderAttestato', () => {
   })
 })
 
-test('verifyUrl puts the hash in the fragment', () => {
-  expect(verifyUrl('ab'.repeat(32))).toBe(`https://proofmark.jpaladins.ovh/verifica#sha256=${'ab'.repeat(32)}`)
-})
-
-test('the page footer names the production host', async () => {
-  const { APP_HOST } = await import('@/core/app')
-  expect(APP_HOST).toBe('proofmark.jpaladins.ovh')
+test('verifyUrl points to the GitHub Pages verify page with the hash in the fragment', () => {
+  expect(verifyUrl('ab'.repeat(32))).toBe(`https://jpaladins.github.io/proofmark/verifica#sha256=${'ab'.repeat(32)}`)
 })

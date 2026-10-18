@@ -1,104 +1,41 @@
-# Pubblicare ProofMark (GitHub + Cloudflare Pages, gratis)
+# Pubblicare ProofMark su GitHub Pages
 
-Servono un account GitHub e un account Cloudflare (piano Free, senza carta di credito).
+ProofMark è un sito statico. Lo pubblica la GitHub Action `.github/workflows/deploy.yml` a ogni push su `main`, all'indirizzo `https://jpaladins.github.io/proofmark/`. Non servono server, account esterni o costi.
 
-## 1. Repository su GitHub
+## 1. Attiva GitHub Pages (una volta)
 
-Con la [GitHub CLI](https://cli.github.com/):
+Repository `jpaladins/proofmark` → **Settings** → **Pages** → **Build and deployment** → **Source: GitHub Actions**.
 
-```bash
-gh repo create proofmark --public --source . --remote origin --push
-```
-
-Senza CLI: crea un repository **pubblico e vuoto** chiamato `proofmark` su github.com, poi:
+In alternativa, con la [GitHub CLI](https://cli.github.com/):
 
 ```bash
-git remote add origin https://github.com/<tuo-utente>/proofmark.git
-git push -u origin main
+gh api -X POST repos/jpaladins/proofmark/pages -f build_type=workflow
 ```
 
-> Se il tuo utente GitHub non è `jpaladins`, aggiorna `REPO_URL` in `src/core/app.ts` e i link dei badge nel `README.md`.
+## 2. Pubblica
 
-Il workflow `.github/workflows/ci.yml` esegue typecheck, lint, test e build su ogni push e pull request.
+Ogni push su `main` esegue test e build e pubblica `dist/`. L'avanzamento è visibile nella scheda **Actions** → *Deploy to GitHub Pages*, oppure si può lanciare a mano con **Run workflow**.
 
-## 2. Progetto su Cloudflare Pages
+Il workflow `.github/workflows/ci.yml` esegue typecheck, lint, test e build su ogni pull request.
 
-1. Dashboard Cloudflare → **Workers & Pages** → **Create** → scheda **Pages** → **Connect to Git**.
-2. Autorizza GitHub e scegli il repository `proofmark`.
-3. Impostazioni di build:
-   - **Project name:** un nome libero qualsiasi, per esempio `proofmark-jpaladins`. Determina solo l'indirizzo tecnico `*.pages.dev`, perché il sito pubblico usa il dominio personalizzato del passo 3.
-   - **Production branch:** `main`
-   - **Framework preset:** `Vite`
-   - **Build command:** `npm run build`
-   - **Build output directory:** `dist`
-   - **Environment variable:** `NODE_VERSION` = `22`
-4. **Save and Deploy.** La cartella `functions/` viene pubblicata automaticamente come Pages Function (`/api/tsa`).
+## Come funziona sotto il cofano
 
-Da questo momento ogni push su `main` va in produzione e ogni pull request ottiene un'anteprima.
+- **Percorso del sito.** È un *project site*, quindi tutto vive sotto `/proofmark/` (`base` in `vite.config.ts`). L'indirizzo pubblico usato nei PDF, nel QR code e nei promemoria è definito in `src/core/app.ts`.
+- **Pagina `/verifica`.** GitHub Pages serve solo file reali. La build copia `index.html` in `verifica/index.html`, così il link del QR code apre direttamente la verifica, e in `404.html` per qualsiasi altro percorso.
+- **Sicurezza.** GitHub Pages non permette header personalizzati.
+  - La Content-Security-Policy (`src/csp.ts`) viene inserita come `<meta>` nella build.
+  - HTTPS e HSTS sono già garantiti da `github.io`.
+  - Il sito si collega solo ai calendari OpenTimestamps e a `blockstream.info`.
+- **Nessun server.** Non c'è più alcun inoltro lato server: i calendari OpenTimestamps e Blockstream accettano chiamate dirette dal browser.
 
-## 3. Dominio personalizzato `proofmark.jpaladins.ovh`
+## Se cambi nome al repository
 
-Il dominio `jpaladins.ovh` è già gestito da Cloudflare, quindi bastano pochi clic.
+Aggiorna `BASE` in `vite.config.ts`, `APP_URL` in `src/core/app.ts` e i link nel `README.md`.
 
-1. Progetto Pages → **Custom domains** → **Set up a custom domain**.
-2. Inserisci `proofmark.jpaladins.ovh` → **Continue** → **Activate domain**. Cloudflare crea da solo il record `CNAME` verso `<progetto>.pages.dev` e il certificato HTTPS, che di solito è attivo in pochi minuti.
-3. Controlla che `https://proofmark.jpaladins.ovh` risponda.
+> Le ricevute e gli attestati già emessi riportano l'indirizzo stampato e nel QR code. Finché sono in circolazione, mantieni il sito raggiungibile a quell'indirizzo.
 
-L'indirizzo pubblico è impostato in un solo punto, `APP_HOST` in `src/core/app.ts`. Il QR code, i link nel PDF e il promemoria del calendario lo usano tutti. Se un giorno cambi dominio, modifica quella costante e ripubblica.
+## Controllo finale
 
-> Gli attestati già emessi contengono l'indirizzo stampato nel PDF e nel QR code. Mantieni attivo il dominio finché quegli attestati restano in circolazione.
-
-## 4. Limite di richieste per `/api/tsa` (consigliato)
-
-Ora il traffico passa da una zona Cloudflare tua, quindi la regola di rate limiting del piano Free è disponibile.
-
-1. Dashboard → zona `jpaladins.ovh` → **Security** → **WAF** → **Rate limiting rules** → **Create rule**.
-2. Configurala così:
-   - **Se:** `Hostname` *equals* `proofmark.jpaladins.ovh` **e** `URI Path` *equals* `/api/tsa`
-   - **Soglia:** 20 richieste per 10 secondi, per IP (il piano Free consente periodi di 10 secondi)
-   - **Azione:** Block per 10 secondi
-
-> La regola vale solo per `proofmark.jpaladins.ovh`. L'indirizzo tecnico `<progetto>.pages.dev` resta raggiungibile e non ne è coperto. Per un servizio a basso traffico è un rischio accettabile.
-
-### Chiudere anche l'indirizzo `*.pages.dev`
-
-Il binding Rate Limiting dei Workers non è disponibile nelle Pages Functions ([documentazione](https://developers.cloudflare.com/pages/functions/bindings/), verificato il 2026-10-17). La regola WAF qui sopra resta quindi la soluzione principale. Per coprire anche `<progetto>.pages.dev` puoi configurare un **Bulk Redirect** da quell'indirizzo verso `proofmark.jpaladins.ovh`.
-
-### Alternative senza WAF
-
-#### Worker separato con binding Rate Limiting, chiamato tramite Service binding
-
-Le Pages Functions supportano i **Service binding** (chiave `services`). Il binding `ratelimits` può quindi stare in un piccolo Worker separato (ad esempio `proofmark-ratelimit`), che espone un controllo `limit({ key })`. La Function `/api/tsa` lo interroga con la chiave `CF-Connecting-IP` prima di inoltrare la richiesta a DigiCert:
-
-```toml
-# wrangler.toml del Worker
-[[ratelimits]]
-name = "TSA_LIMITER"
-namespace_id = "1001"
-  [ratelimits.simple]
-  limit = 20
-  period = 60
-```
-
-```toml
-# wrangler.toml di Pages
-[[services]]
-binding = "RATE_LIMITER"
-service = "proofmark-ratelimit"
-```
-
-Funziona anche su `*.pages.dev` e resta nel piano Free, ma richiede un secondo deploy da mantenere. Il contatore è applicato **per singolo data center Cloudflare** ed è volutamente approssimativo ("eventually consistent"): serve contro gli abusi, non come conteggio preciso.
-
-#### Contatore in un Durable Object o in KV
-
-Un Durable Object definito in un Worker separato e collegato a Pages con `durable_objects` offre un conteggio preciso e globale, ma è più complesso. KV è eventualmente consistente, con un ritardo fino a circa 60 secondi, e consuma rapidamente le scritture gratuite giornaliere, quindi non è adatto.
-
-#### Senza nessun limite
-
-Il servizio funziona lo stesso. La Function accetta solo `POST` `application/timestamp-query` fino a 1 KB e ha un timeout verso DigiCert, che applica i propri limiti.
-
-## 5. Controllo finale
-
-1. Apri `https://proofmark.jpaladins.ovh`, certifica un piccolo `.zip` e scarica l'attestato.
-2. Apri il PDF in **Adobe Acrobat Reader** e controlla il pannello Firme: deve comparire una marca temporale del documento emessa da DigiCert.
-3. In **Verifica**, carica lo `.zip` e il PDF: tutti i controlli devono risultare superati.
+1. Apri `https://jpaladins.github.io/proofmark/`, certifica un piccolo `.zip` e scarica la ricevuta.
+2. Dopo qualche ora apri **Verifica**, carica lo `.zip` e la ricevuta, controlla la conferma Bitcoin e scarica l'attestato.
+3. Scansiona il QR code dell'attestato con il telefono: deve aprirsi la pagina Verifica con l'impronta già compilata.
