@@ -1,56 +1,40 @@
-// The four-step certification run: hash → DigiCert stamp → Bitcoin anchor → certificate.
-// Policy (spec §11): the DigiCert stamp on the archive is mandatory; OpenTimestamps and the PDF
-// seal are optional and degrade to a visible warning.
+// The three-step certification run: hash → Bitcoin anchor (OpenTimestamps) → receipt.
+// The anchor is the only proof of time, so it is mandatory: without it no receipt is issued.
 import type { PDFDocument } from 'pdf-lib'
 import { buildCertificate, serializeCertificate, type Certificate } from '@/core/cert/certificate'
 import type { Bytes } from '@/core/hash/sha256'
 import type { HashProgress } from '@/core/hash/hashFile'
 import { inspectOts } from '@/core/ots/ots'
 import type { FontBytes } from '@/core/pdf/fonts'
-import { TsaError, type TsaErrorCode, type TsaResult } from '@/core/tsa/rfc3161'
-import { verifyTimestampToken } from '@/core/verify/verifyToken'
 
-export type StepId = 'hash' | 'tsa' | 'ots' | 'cert'
+export type StepId = 'hash' | 'ots' | 'cert'
 export type StepState = { status: 'idle' | 'active' | 'done' | 'warn' | 'error'; message?: string; progress?: number }
 
 export type CertifyResult = {
   certificate: Certificate
   pdf: Bytes
-  pdfSealed: boolean
   json: string
-  tsr: Bytes
-  ots?: Bytes
-  reminderAfter?: Date
+  ots: Bytes
+  /** When it is worth coming back for the Bitcoin confirmation. */
+  reminderAfter: Date
 }
 
 export type CertifyDeps = {
   hashFile: (file: File, onProgress: (p: HashProgress) => void, signal?: AbortSignal) => Promise<string>
-  requestTimestamp: (sha256Hex: string, signal?: AbortSignal) => Promise<TsaResult>
   stampHash: (sha256Hex: string, signal?: AbortSignal) => Promise<Bytes>
-  renderAttestato: (
-    cert: Certificate,
-    proofs: { tsr: Uint8Array; ots?: Uint8Array },
-    opts?: { sealed?: boolean; fonts?: FontBytes },
-  ) => Promise<PDFDocument>
-  sealPdf: (doc: PDFDocument, timestamp: (sha256Hex: string) => Promise<{ token: Uint8Array }>) => Promise<Bytes>
+  renderAttestato: (cert: Certificate, proofs: { ots: Uint8Array }, opts?: { fonts?: FontBytes }) => Promise<PDFDocument>
 }
 
-export const TSA_ERROR_COPY: Record<TsaErrorCode, string> = {
-  network: 'Impossibile contattare DigiCert. Controlla la connessione e riprova.',
-  timeout: 'DigiCert non risponde. Riprova tra qualche istante.',
-  rejected: 'DigiCert ha rifiutato la richiesta. Riprova tra qualche istante.',
-  malformed: 'Risposta di DigiCert non valida. Riprova tra qualche istante.',
-  mismatch: "La marca ricevuta non corrisponde all'archivio. Riprova.",
-}
-export const OTS_UNAVAILABLE = 'Ancoraggio Bitcoin non disponibile: potrai aggiungerlo dalla sezione Verifica'
-export const SEAL_FAILED = 'PDF generato senza sigillo: il sigillo DigiCert sul documento non è riuscito'
+export const OTS_ERROR = 'Impossibile raggiungere i calendari Bitcoin. Controlla la connessione e riprova.'
+export const OTS_MISMATCH = "La prova ricevuta non corrisponde all'archivio. Riprova."
+export const PDF_ERROR = 'Impossibile generare la ricevuta PDF. Riprova.'
 export const REMINDER_DELAY_MS = 3 * 3600_000
 
-/** Thrown when a mandatory step fails; `resume` lets a retry skip the steps already done. */
+/** Thrown when a step fails; `resume` lets a retry skip the hashing already done. */
 export class CertifyError extends Error {
   readonly step: StepId
-  readonly resume: { sha256?: string; tsa?: TsaResult }
-  constructor(step: StepId, message: string, resume: { sha256?: string; tsa?: TsaResult }) {
+  readonly resume: { sha256?: string }
+  constructor(step: StepId, message: string, resume: { sha256?: string }) {
     super(message)
     this.name = 'CertifyError'
     this.step = step
@@ -67,7 +51,7 @@ export async function runCertification(
   deps: CertifyDeps,
   onStep: (id: StepId, s: StepState) => void,
   signal?: AbortSignal,
-  resume: { sha256?: string; tsa?: TsaResult } = {},
+  resume: { sha256?: string } = {},
 ): Promise<CertifyResult> {
   // 1. Hash
   let sha256 = resume.sha256
@@ -94,66 +78,45 @@ export async function runCertification(
   onStep('hash', { status: 'done', progress: 1 })
   throwIfAborted(signal)
 
-  // 2. DigiCert RFC 3161 (mandatory)
-  let tsa = resume.tsa
-  if (!tsa) {
-    onStep('tsa', { status: 'active' })
-    try {
-      tsa = await deps.requestTimestamp(sha256, signal)
-      // The relay→DigiCert hop is plain HTTP: accept only a token that verifies against the pinned root.
-      const checks = await verifyTimestampToken(tsa.token, sha256)
-      if (checks.some((c) => c.status !== 'ok')) throw new TsaError('malformed', 'Token DigiCert non valido.')
-    } catch (err) {
-      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
-      const message = err instanceof TsaError ? TSA_ERROR_COPY[err.code] : TSA_ERROR_COPY.network
-      onStep('tsa', { status: 'error', message })
-      throw new CertifyError('tsa', message, { sha256 })
-    }
-  }
-  onStep('tsa', { status: 'done', message: tsa.info.tsa })
-  throwIfAborted(signal)
-
-  // 3. OpenTimestamps (optional)
+  // 2. Bitcoin anchor (mandatory)
   onStep('ots', { status: 'active' })
-  let ots: Bytes | undefined
+  const requestedAt = new Date()
+  let ots: Bytes
   try {
     ots = await deps.stampHash(sha256, signal)
-    onStep('ots', { status: 'done' })
   } catch {
-    onStep('ots', { status: 'warn', message: OTS_UNAVAILABLE })
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+    onStep('ots', { status: 'error', message: OTS_ERROR })
+    throw new CertifyError('ots', OTS_ERROR, { sha256 })
   }
+  let otsInfo: ReturnType<typeof inspectOts>
+  try {
+    otsInfo = inspectOts(ots)
+    if (otsInfo.digestHex !== sha256) throw new Error('digest mismatch')
+  } catch {
+    onStep('ots', { status: 'error', message: OTS_MISMATCH })
+    throw new CertifyError('ots', OTS_MISMATCH, { sha256 })
+  }
+  onStep('ots', { status: 'done', message: `${otsInfo.calendars.length} calendari` })
   throwIfAborted(signal)
 
-  // 4. Certificate, PDF and seal (seal optional)
+  // 3. Receipt
   onStep('cert', { status: 'active' })
-  const otsInfo = ots ? inspectOts(ots) : undefined
-  const certificate = buildCertificate({ file: input.file, sha256, tsa, ots, otsInfo, declared: input.declared })
-  const proofs = { tsr: tsa.token, ots }
+  const certificate = buildCertificate({ file: input.file, sha256, ots, otsInfo, requestedAt, declared: input.declared })
   let pdf: Bytes
-  let pdfSealed = true
   try {
-    const seal = (h: string) => deps.requestTimestamp(h, signal)
-    pdf = await deps.sealPdf(await deps.renderAttestato(certificate, proofs, { sealed: true }), seal)
-    onStep('cert', { status: 'done' })
+    pdf = new Uint8Array(await (await deps.renderAttestato(certificate, { ots })).save())
   } catch {
-    pdfSealed = false
-    try {
-      pdf = new Uint8Array(await (await deps.renderAttestato(certificate, proofs, { sealed: false })).save())
-    } catch {
-      const message = "Impossibile generare l'attestato PDF. Riprova."
-      onStep('cert', { status: 'error', message })
-      throw new CertifyError('cert', message, { sha256, tsa })
-    }
-    onStep('cert', { status: 'warn', message: SEAL_FAILED })
+    onStep('cert', { status: 'error', message: PDF_ERROR })
+    throw new CertifyError('cert', PDF_ERROR, { sha256 })
   }
+  onStep('cert', { status: 'done' })
 
   return {
     certificate,
     pdf,
-    pdfSealed,
     json: serializeCertificate(certificate),
-    tsr: tsa.token,
-    ...(ots ? { ots } : {}),
-    ...(otsInfo?.status === 'pending' ? { reminderAfter: new Date(tsa.info.genTime.getTime() + REMINDER_DELAY_MS) } : {}),
+    ots,
+    reminderAfter: new Date(requestedAt.getTime() + REMINDER_DELAY_MS),
   }
 }

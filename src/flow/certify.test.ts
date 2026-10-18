@@ -1,26 +1,21 @@
 // @vitest-environment node
 import { describe, expect, test, vi } from 'vitest'
 import type { PDFDocument } from 'pdf-lib'
-import { fixture, fixtureText } from '@/test/fixtures'
-import { TSA } from '@/test/certFixtures'
-import { TsaError } from '@/core/tsa/rfc3161'
+import { CONFIRMED_OTS, PENDING_HASH, PENDING_OTS } from '@/test/certFixtures'
 import { OtsError } from '@/core/ots/format'
-import { runCertification, type CertifyDeps, type StepId, type StepState } from './certify'
+import { REMINDER_DELAY_MS, runCertification, type CertifyDeps, type StepId, type StepState } from './certify'
 
-const HASH = fixtureText('data.sha256')
 const zip = () => new File([new Uint8Array([0x50, 0x4b, 3, 4])], 'opera.zip')
 
 function fakeDeps(over: Partial<CertifyDeps> = {}): CertifyDeps {
-  const doc = { save: vi.fn(async () => new Uint8Array([1, 2, 3])) } as unknown as PDFDocument
+  const doc = { save: vi.fn(async () => new Uint8Array([9, 9, 9])) } as unknown as PDFDocument
   return {
     hashFile: vi.fn(async (_f, onProgress) => {
       onProgress({ bytesDone: 4, total: 4, mbPerSec: 100, etaSec: 0 })
-      return HASH
+      return PENDING_HASH
     }),
-    requestTimestamp: vi.fn(async () => TSA),
-    stampHash: vi.fn(async () => fixture('incomplete.txt.ots')),
+    stampHash: vi.fn(async () => PENDING_OTS),
     renderAttestato: vi.fn(async () => doc),
-    sealPdf: vi.fn(async () => new Uint8Array([9, 9, 9])),
     ...over,
   }
 }
@@ -39,49 +34,49 @@ function recorder() {
 }
 
 describe('runCertification', () => {
-  test('runs hash → DigiCert → Bitcoin → certificate and returns sealed outputs', async () => {
+  test('runs hash → Bitcoin → receipt and returns the receipt with its proof', async () => {
     const rec = recorder()
+    const before = Date.now()
     const res = await runCertification({ file: zip(), declared: { author: 'Ada' } }, fakeDeps(), rec.onStep)
-    const done = rec.log.filter(([, s]) => s === 'done').map(([id]) => id)
-    expect(done).toEqual(['hash', 'tsa', 'ots', 'cert'])
-    expect(res.pdfSealed).toBe(true)
-    expect(res.pdf).toEqual(new Uint8Array([9, 9, 9]))
+    expect(rec.log.filter(([, s]) => s === 'done').map(([id]) => id)).toEqual(['hash', 'ots', 'cert'])
+    expect(res.certificate.kind).toBe('ricevuta')
     expect(res.certificate.declared?.author).toBe('Ada')
+    expect(res.pdf).toEqual(new Uint8Array([9, 9, 9]))
+    expect(res.ots).toEqual(PENDING_OTS)
     expect(JSON.parse(res.json).id).toBe(res.certificate.id)
-    expect(res.reminderAfter?.getTime()).toBe(TSA.info.genTime.getTime() + 3 * 3600_000)
+    const requested = new Date(res.certificate.requestedAt).getTime()
+    expect(requested).toBeGreaterThanOrEqual(before - 1000)
+    expect(res.reminderAfter.getTime()).toBe(requested + REMINDER_DELAY_MS)
   })
 
-  test('stops with a retry message and no certificate when DigiCert times out', async () => {
+  test('stops with a retry message and no receipt when no calendar answers', async () => {
     const rec = recorder()
-    const deps = fakeDeps({ requestTimestamp: vi.fn(async () => Promise.reject(new TsaError('timeout', 'x'))) })
-    await expect(runCertification({ file: zip() }, deps, rec.onStep)).rejects.toMatchObject({ step: 'tsa' })
-    expect(rec.last.tsa).toMatchObject({ status: 'error', message: 'DigiCert non risponde. Riprova tra qualche istante.' })
-    expect(rec.last.ots).toBeUndefined()
+    const deps = fakeDeps({ stampHash: vi.fn(async () => Promise.reject(new OtsError('network', 'x'))) })
+    await expect(runCertification({ file: zip() }, deps, rec.onStep)).rejects.toMatchObject({
+      step: 'ots',
+      resume: { sha256: PENDING_HASH },
+    })
+    expect(rec.last.ots).toMatchObject({
+      status: 'error',
+      message: 'Impossibile raggiungere i calendari Bitcoin. Controlla la connessione e riprova.',
+    })
     expect(rec.last.cert).toBeUndefined()
     expect(deps.renderAttestato).not.toHaveBeenCalled()
   })
 
-  test('still produces a certificate when OpenTimestamps is unavailable', async () => {
+  test('rejects a proof that does not commit to the archive hash', async () => {
     const rec = recorder()
-    const deps = fakeDeps({ stampHash: vi.fn(async () => Promise.reject(new OtsError('network', 'x'))) })
-    const res = await runCertification({ file: zip() }, deps, rec.onStep)
-    expect(rec.last.ots).toMatchObject({
-      status: 'warn',
-      message: 'Ancoraggio Bitcoin non disponibile: potrai aggiungerlo dalla sezione Verifica',
-    })
-    expect(res.certificate.opentimestamps.status).toBe('unavailable')
-    expect(res.ots).toBeUndefined()
-    expect(res.reminderAfter).toBeUndefined()
+    const deps = fakeDeps({ stampHash: vi.fn(async () => CONFIRMED_OTS) })
+    await expect(runCertification({ file: zip() }, deps, rec.onStep)).rejects.toMatchObject({ step: 'ots' })
+    expect(rec.last.ots?.status).toBe('error')
+    expect(deps.renderAttestato).not.toHaveBeenCalled()
   })
 
-  test('falls back to an unsealed PDF when the seal fails', async () => {
+  test('reports a PDF failure as a retryable error on the last step', async () => {
     const rec = recorder()
-    const deps = fakeDeps({ sealPdf: vi.fn(async () => Promise.reject(new TsaError('network', 'x'))) })
-    const res = await runCertification({ file: zip() }, deps, rec.onStep)
-    expect(rec.last.cert?.status).toBe('warn')
-    expect(res.pdfSealed).toBe(false)
-    expect(res.pdf).toEqual(new Uint8Array([1, 2, 3]))
-    expect(deps.renderAttestato).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), { sealed: false })
+    const deps = fakeDeps({ renderAttestato: vi.fn(async () => Promise.reject(new Error('font'))) })
+    await expect(runCertification({ file: zip() }, deps, rec.onStep)).rejects.toMatchObject({ step: 'cert' })
+    expect(rec.last.cert).toMatchObject({ status: 'error', message: 'Impossibile generare la ricevuta PDF. Riprova.' })
   })
 
   test('aborting during hashing rejects with AbortError and calls nothing else', async () => {
@@ -95,46 +90,12 @@ describe('runCertification', () => {
     await expect(runCertification({ file: zip() }, deps, () => {}, controller.signal)).rejects.toMatchObject({
       name: 'AbortError',
     })
-    expect(deps.requestTimestamp).not.toHaveBeenCalled()
-  })
-
-  test('passes the abort signal to the TSA and OTS clients', async () => {
-    const controller = new AbortController()
-    const deps = fakeDeps()
-    await runCertification({ file: zip() }, deps, () => {}, controller.signal)
-    expect(deps.requestTimestamp).toHaveBeenCalledWith(HASH, controller.signal)
-    expect(deps.stampHash).toHaveBeenCalledWith(HASH, controller.signal)
-  })
-
-  test('aborting during the TSA request rejects with AbortError, not a TSA error', async () => {
-    const controller = new AbortController()
-    const steps: StepId[] = []
-    const deps = fakeDeps({
-      requestTimestamp: vi.fn(async () => {
-        controller.abort()
-        throw new DOMException('Aborted', 'AbortError')
-      }),
-    })
-    await expect(
-      runCertification({ file: zip() }, deps, (id, s) => s.status === 'error' && steps.push(id), controller.signal),
-    ).rejects.toMatchObject({ name: 'AbortError' })
-    expect(steps).toEqual([])
     expect(deps.stampHash).not.toHaveBeenCalled()
   })
 
   test('resuming with a known hash skips hashing', async () => {
     const deps = fakeDeps()
-    await runCertification({ file: zip() }, deps, () => {}, undefined, { sha256: HASH })
+    await runCertification({ file: zip() }, deps, () => {}, undefined, { sha256: PENDING_HASH })
     expect(deps.hashFile).not.toHaveBeenCalled()
   })
-})
-
-test('rejects a DigiCert token whose signature does not verify', async () => {
-  const token = new Uint8Array(TSA.token)
-  token[token.length - 5] ^= 0x01
-  const rec = recorder()
-  const deps = fakeDeps({ requestTimestamp: vi.fn(async () => ({ ...TSA, token })) })
-  await expect(runCertification({ file: zip() }, deps, rec.onStep)).rejects.toMatchObject({ step: 'tsa' })
-  expect(rec.last.tsa).toMatchObject({ status: 'error', message: 'Risposta di DigiCert non valida. Riprova tra qualche istante.' })
-  expect(deps.renderAttestato).not.toHaveBeenCalled()
 })
