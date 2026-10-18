@@ -229,7 +229,7 @@ export function buildAttestatoContent(
     ],
     footer: [
       'La prova crittografica è il file prova.ots allegato, verificabile con OpenTimestamps',
-      `Generato localmente nel browser · ProofMark v${APP_VERSION} · open source (MIT)`,
+      `Generato localmente nel browser · ProofMark v${APP_VERSION} · open source (AGPL-3.0)`,
     ],
     sections: {
       declared: 'Dati dichiarati',

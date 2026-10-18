@@ -85,3 +85,11 @@ test('the footer credits the developer', () => {
   expect(footer).toHaveTextContent('Developed by JPaladins')
   expect(within(footer).getByRole('link', { name: 'JPaladins' })).toHaveAttribute('href', 'https://github.com/jpaladins')
 })
+
+test('the footer names the AGPL licence and links the source code', () => {
+  render(<App />)
+  const footer = screen.getByRole('contentinfo')
+  expect(footer).toHaveTextContent('licenza AGPL-3.0')
+  expect(footer).not.toHaveTextContent('MIT')
+  expect(within(footer).getByRole('link', { name: 'Codice sorgente' })).toHaveAttribute('href', 'https://github.com/jpaladins/proofmark')
+})
