@@ -1,10 +1,12 @@
+import { FileArchive, ShieldCheck, X } from 'lucide-react'
 import { useId, useState } from 'react'
 import { DECLARED_MAX } from '@/core/cert/certificate'
+import { formatBytes } from '@/core/pdf/content'
 import type { CertifyDeps } from '@/flow/certify'
 import { defaultCertifyDeps, useCertify } from '@/flow/useCertify'
 import { CertificateCard } from '../components/CertificateCard'
 import { DropZone } from '../components/DropZone'
-import { Fingerprint } from '../components/Fingerprint'
+import { HashProgress } from '../components/HashProgress'
 import { Alert, Button } from '../components/primitives'
 import { Stepper } from '../components/Stepper'
 
@@ -36,6 +38,7 @@ export function CertifyPage({ deps = defaultCertifyDeps }: { deps?: CertifyDeps 
   const { steps, result, error, running, start, retry, reset } = useCertify(deps)
   const [author, setAuthor] = useState('')
   const [title, setTitle] = useState('')
+  const [selected, setSelected] = useState<File>()
   const started = running || !!result || !!error
   const hashing = steps.hash.status === 'active'
 
@@ -45,6 +48,7 @@ export function CertifyPage({ deps = defaultCertifyDeps }: { deps?: CertifyDeps 
         result={result}
         onReset={() => {
           reset()
+          setSelected(undefined)
           setAuthor('')
           setTitle('')
         }}
@@ -71,20 +75,48 @@ export function CertifyPage({ deps = defaultCertifyDeps }: { deps?: CertifyDeps 
         <p className="mt-2 text-sm text-muted">Compaiono nell'attestato come dati dichiarati da te, non certificati.</p>
 
         <div className="mt-6">
-          <DropZone disabled={running} onFile={(file) => start(file, { author, title })} />
+          {selected ? (
+            <section
+              aria-label="Archivio selezionato"
+              className="rounded-xl border border-line-strong bg-surface p-5 sm:p-6 [animation:pm-reveal_.3s_ease-out_both]"
+            >
+              <div className="flex items-start gap-4">
+                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-sunken text-ink-2">
+                  <FileArchive aria-hidden className="size-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="break-all font-medium text-ink">{selected.name}</p>
+                  <p className="mt-0.5 text-sm text-muted">{formatBytes(selected.size)}</p>
+                </div>
+                {!started && (
+                  <Button variant="ghost" onClick={() => setSelected(undefined)} className="-mr-2 -mt-1 shrink-0 px-2.5">
+                    <X aria-hidden className="size-4" />
+                    Cambia archivio
+                  </Button>
+                )}
+              </div>
+              {!started && (
+                <div className="mt-5 border-t border-line pt-5">
+                  <p className="max-w-[60ch] text-sm leading-relaxed text-ink-2">
+                    Controlla l'archivio e i dati dichiarati, poi conferma. La registrazione sulla blockchain Bitcoin non si
+                    può annullare: per modificare qualcosa dopo, dovrai certificare di nuovo.
+                  </p>
+                  <Button className="mt-4 w-full sm:w-auto" onClick={() => start(selected, { author, title })}>
+                    <ShieldCheck aria-hidden className="size-4" />
+                    Certifica archivio
+                  </Button>
+                </div>
+              )}
+            </section>
+          ) : (
+            <DropZone disabled={running} onFile={setSelected} />
+          )}
         </div>
 
         {started && (
           <div className="mt-10 grid gap-8">
             <Stepper steps={steps} />
-            {(hashing || steps.hash.status === 'done') && (
-              <div className="rounded-xl border border-line bg-surface p-5">
-                <p className="text-sm font-medium text-ink-2">Impronta SHA-256</p>
-                <div className="mt-3">
-                  <Fingerprint progress={steps.hash.progress} />
-                </div>
-              </div>
-            )}
+            {hashing && <HashProgress progress={steps.hash.hashProgress} />}
             {error && (
               <Alert tone="danger" title="La certificazione si è fermata" action={<Button onClick={retry}>Riprova</Button>}>
                 {error}

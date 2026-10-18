@@ -132,6 +132,11 @@ body {
   75% { transform: translateX(5px); }
 }
 
+@keyframes pm-indeterminate {
+  from { left: -35%; }
+  to { left: 100%; }
+}
+
 @keyframes pm-reveal {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
