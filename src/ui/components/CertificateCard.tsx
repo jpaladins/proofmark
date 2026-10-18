@@ -1,4 +1,5 @@
 import { CalendarPlus, Download, FileJson, FileText, RotateCcw } from 'lucide-react'
+import { useLayoutEffect, useRef } from 'react'
 import { formatBytes, PENDING_REMINDER } from '@/core/pdf/content'
 import type { CertifyResult } from '@/flow/certify'
 import { utcOffset } from '@/core/time'
@@ -47,6 +48,14 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
 export function CertificateCard({ result, onReset }: { result: CertifyResult; onReset: () => void }) {
   const { certificate: c } = result
   const base = baseName(c.file.name)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+
+  // The receipt replaces a long form: jump to the top before it is painted (a smooth scroll can be
+  // cancelled by the browser while the page height changes) and move focus to the result.
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    headingRef.current?.focus({ preventScroll: true })
+  }, [])
   const downloads = [
     {
       label: 'Scarica ricevuta PDF',
@@ -69,7 +78,9 @@ export function CertificateCard({ result, onReset }: { result: CertifyResult; on
   return (
     <section aria-label="Ricevuta generata" className="[animation:pm-reveal_.45s_ease-out_both]">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 className="font-serif text-2xl font-semibold tracking-tight">Registrazione inviata alla blockchain</h2>
+        <h2 ref={headingRef} tabIndex={-1} className="font-serif text-2xl font-semibold tracking-tight focus:outline-none">
+          Registrazione inviata alla blockchain
+        </h2>
         <p className="font-mono text-sm text-muted">{c.id}</p>
       </div>
       <p className="mt-3 max-w-[62ch] text-ink-2">
