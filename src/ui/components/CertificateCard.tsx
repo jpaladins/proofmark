@@ -4,7 +4,8 @@ import { formatBytes, PENDING_REMINDER } from '@/core/pdf/content'
 import type { CertifyResult } from '@/flow/certify'
 import { utcOffset } from '@/core/time'
 import { buildReminderIcs } from '../ics'
-import { baseName, downloadBytes } from '../download'
+import { downloadBytes } from '../download'
+import { proofFileNames } from '@/core/cert/fileNames'
 import { Alert, Badge, Button } from './primitives'
 import { CopyButton, Fingerprint } from './Fingerprint'
 
@@ -47,7 +48,7 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
 /** Result of a certification run: the receipt. The attestation comes later, from the Verify page. */
 export function CertificateCard({ result, onReset }: { result: CertifyResult; onReset: () => void }) {
   const { certificate: c } = result
-  const base = baseName(c.file.name)
+  const names = proofFileNames(c)
   const headingRef = useRef<HTMLHeadingElement>(null)
 
   // The receipt replaces a long form: jump to the top before it is painted (a smooth scroll can be
@@ -61,17 +62,17 @@ export function CertificateCard({ result, onReset }: { result: CertifyResult; on
       label: 'Scarica ricevuta PDF',
       icon: FileText,
       primary: true,
-      run: () => downloadBytes(result.pdf, `${base}_ricevuta.pdf`, 'application/pdf'),
+      run: () => downloadBytes(result.pdf, names.pdf, 'application/pdf'),
     },
     {
       label: 'Scarica ricevuta JSON',
       icon: FileJson,
-      run: () => downloadBytes(result.json, `${base}_ricevuta.json`, 'application/json'),
+      run: () => downloadBytes(result.json, names.json, 'application/json'),
     },
     {
       label: 'Scarica prova Bitcoin (.ots)',
       icon: Download,
-      run: () => downloadBytes(result.ots, `${base}.ots`, 'application/vnd.opentimestamps.v1'),
+      run: () => downloadBytes(result.ots, names.ots, 'application/vnd.opentimestamps.v1'),
     },
   ]
 

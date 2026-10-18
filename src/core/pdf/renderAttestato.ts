@@ -20,6 +20,7 @@ import QRCode from 'qrcode'
 import { APP_URL, APP_VERSION, VERIFY_URL } from '@/core/app'
 import type { Bytes } from '@/core/hash/sha256'
 import { serializeCertificate, type Certificate } from '@/core/cert/certificate'
+import { proofFileNames } from '@/core/cert/fileNames'
 import { buildAttestatoContent, type AttestatoContent, type Pill, type Row } from './content'
 import { loadFontBytes, type FontBytes } from './fonts'
 
@@ -475,9 +476,10 @@ export async function renderAttestato(
   }
 
   const json = new TextEncoder().encode(serializeCertificate(cert))
+  const names = proofFileNames(cert)
   const files = [
-    { name: 'prova.ots', bytes: proofs.ots, mime: 'application/vnd.opentimestamps.v1', description: 'Prova OpenTimestamps (blockchain Bitcoin)' },
-    { name: 'certificato.json', bytes: json, mime: 'application/json', description: 'Certificato ProofMark (JSON)' },
+    { name: names.ots, bytes: proofs.ots, mime: 'application/vnd.opentimestamps.v1', description: 'Prova OpenTimestamps (blockchain Bitcoin)' },
+    { name: names.json, bytes: json, mime: 'application/json', description: 'Certificato ProofMark (JSON)' },
   ]
   const content = buildAttestatoContent(cert, {
     attachments: files.map((x) => ({ name: x.name, size: x.bytes.length })),
