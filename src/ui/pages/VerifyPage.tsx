@@ -1,6 +1,6 @@
 import { Award, Bitcoin, Download, FileJson, FileText, Loader2, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
-import { hashFile } from '@/core/hash/hashFile'
+import { hashFile, type HashProgress as Progress } from '@/core/hash/hashFile'
 import type { Check } from '@/core/verify/check'
 import {
   buildAttestato,
@@ -14,12 +14,13 @@ import {
 import { CheckList } from '../components/CheckList'
 import { DropZone } from '../components/DropZone'
 import { Fingerprint } from '../components/Fingerprint'
+import { HashProgress } from '../components/HashProgress'
 import { Alert, Button } from '../components/primitives'
 import { baseName, downloadBytes } from '../download'
 import { useRoute } from '../router'
 
 export type VerifyPageDeps = {
-  hashFile: (file: File, onProgress: (p: { bytesDone: number; total: number }) => void) => Promise<string>
+  hashFile: (file: File, onProgress: (p: Progress) => void) => Promise<string>
   loadEvidence: (file: File) => Promise<Evidence>
   verifyOffline: (zipSha256: string, ev: Evidence) => Promise<Check[]>
   checkBitcoin: typeof checkBitcoin
@@ -57,7 +58,7 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
   const [zip, setZip] = useState<File>()
   const [evidenceFile, setEvidenceFile] = useState<File>()
   const [busy, setBusy] = useState<'verify' | 'bitcoin' | 'attestato'>()
-  const [progress, setProgress] = useState<number>()
+  const [progress, setProgress] = useState<Progress>()
   const [error, setError] = useState<string>()
   const [checks, setChecks] = useState<Check[]>()
   const [evidence, setEvidence] = useState<Evidence>()
@@ -90,7 +91,7 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
     setBusy('verify')
     clearResult()
     try {
-      const sha256 = await deps.hashFile(zip, (p) => setProgress(p.total ? p.bytesDone / p.total : 1))
+      const sha256 = await deps.hashFile(zip, setProgress)
       if (!evidenceFile && fromQr) {
         setChecks([
           sha256 === fromQr
@@ -207,12 +208,13 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
           {busy === 'verify' ? <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <ShieldCheck aria-hidden className="size-4" />}
           Verifica
         </Button>
-        {busy === 'verify' && progress !== undefined && (
-          <p className="text-sm text-muted" aria-live="polite">
-            Calcolo dell'impronta: {Math.round(progress * 100)}%
-          </p>
-        )}
       </div>
+
+      {busy === 'verify' && (
+        <div className="mt-6">
+          <HashProgress progress={progress} />
+        </div>
+      )}
 
       {error && (
         <div className="mt-6">
