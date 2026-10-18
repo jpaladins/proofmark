@@ -1,6 +1,7 @@
 import { useCallback, useSyncExternalStore } from 'react'
+import { PAGES, type Path } from '@/pages'
 
-export type Path = '/' | '/verifica'
+export type { Path }
 const NAV_EVENT = 'pm:navigate'
 /** Site prefix on GitHub Pages ('/proofmark'), '' when served from the root. */
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '')
@@ -12,7 +13,8 @@ export function toUrl(path: Path): string {
 
 function pageOf(pathname: string): Path {
   const inner = pathname.startsWith(BASE) ? pathname.slice(BASE.length) : pathname
-  return inner.replace(/\/+$/, '') === '/verifica' ? '/verifica' : '/'
+  const clean = inner.replace(/\/+$/, '') || '/'
+  return (PAGES as readonly string[]).includes(clean) ? (clean as Path) : '/'
 }
 
 const subscribe = (cb: () => void) => {
