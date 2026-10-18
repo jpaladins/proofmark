@@ -74,3 +74,16 @@ describe('renderAttestato', () => {
 test('verifyUrl points to the GitHub Pages verify page with the hash in the fragment', () => {
   expect(verifyUrl('ab'.repeat(32))).toBe(`https://jpaladins.github.io/proofmark/verifica#sha256=${'ab'.repeat(32)}`)
 })
+
+describe('QR panel layout', () => {
+  test.each([0, 96, 140])('keeps a clear gap between the QR code and its caption (hero height %s)', async (heroH) => {
+    const { qrPanelLayout } = await import('./renderAttestato')
+    const l = qrPanelLayout(heroH)
+    const qrBottom = l.qrTop + l.qrSize
+    const captionTop = l.captionBaseline - l.captionCapHeight
+    expect(captionTop - qrBottom).toBeGreaterThanOrEqual(8)
+    expect(l.qrTop).toBeGreaterThanOrEqual(9)
+    expect(l.height - l.captionBaseline).toBeGreaterThanOrEqual(9)
+    expect(l.height).toBeGreaterThanOrEqual(heroH)
+  })
+})
