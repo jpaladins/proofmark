@@ -3,7 +3,6 @@ import type { Lang } from '@/i18n'
 import { useT } from '../LangContext'
 import { toUrl, useRoute } from '../router'
 import { useLangChoice } from '../useLangChoice'
-import { cx } from '../cx'
 
 const FLAG = 'h-3 w-4 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15 dark:ring-white/25'
 
@@ -35,36 +34,33 @@ const OPTIONS: { lang: Lang; name: string; Flag: () => ReactElement }[] = [
   { lang: 'it', name: 'Italiano', Flag: FlagIT },
 ]
 
-/** Flag + name links: they work with JS off and in a new tab; a plain click navigates in-page. */
+/**
+ * A flag + name link to the same page in the other language. It works with JS off and in a new
+ * tab; a plain click navigates in-page.
+ */
 export function LangSwitch() {
   const { page, lang, navigate } = useRoute()
   const { save } = useLangChoice()
   const t = useT().layout
-  const onClick = (e: MouseEvent<HTMLAnchorElement>, target: Lang) => {
+  const { lang: target, name, Flag } = OPTIONS.find((o) => o.lang !== lang)!
+  const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
     e.preventDefault()
     save(target)
     navigate(page, target, window.location.hash)
   }
   return (
-    <nav aria-label={t.language} className="flex items-center gap-1 text-xs font-medium">
-      {OPTIONS.map(({ lang: l, name, Flag }) => (
-        <a
-          key={l}
-          href={toUrl(page, l) + window.location.hash}
-          hrefLang={l}
-          lang={l}
-          aria-current={l === lang ? 'true' : undefined}
-          onClick={(e) => onClick(e, l)}
-          className={cx(
-            'flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition-colors',
-            l === lang ? 'bg-sunken text-ink' : 'text-muted hover:text-ink',
-          )}
-        >
-          <Flag />
-          {name}
-        </a>
-      ))}
+    <nav aria-label={t.language} className="text-sm">
+      <a
+        href={toUrl(page, target) + window.location.hash}
+        hrefLang={target}
+        lang={target}
+        onClick={onClick}
+        className="flex items-center gap-2 underline-offset-4 hover:text-ink hover:underline"
+      >
+        <Flag />
+        {name}
+      </a>
     </nav>
   )
 }

@@ -17,16 +17,21 @@ afterEach(() => {
 })
 
 describe('language switch', () => {
-  test('lives in the footer, not the header, and shows both flags', () => {
+  test('lives in the footer, not the header, and offers only the other language with its flag', () => {
     render(<App />)
     expect(within(screen.getByRole('banner')).queryByRole('link', { name: 'Italiano' })).not.toBeInTheDocument()
     expect(within(screen.getByRole('banner')).queryByRole('navigation', { name: 'Language' })).not.toBeInTheDocument()
     const nav = within(screen.getByRole('contentinfo')).getByRole('navigation', { name: 'Language' })
-    for (const name of ['English', 'Italiano']) {
-      const link = within(nav).getByRole('link', { name })
-      const flag = link.querySelector('svg')
-      expect(flag).toHaveAttribute('aria-hidden', 'true')
-    }
+    expect(within(nav).getAllByRole('link')).toHaveLength(1)
+    expect(within(nav).getByRole('link', { name: 'Italiano' }).querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  test('an Italian page offers English', () => {
+    window.history.replaceState(null, '', '/proofmark/it/')
+    render(<App />)
+    const nav = within(screen.getByRole('contentinfo')).getByRole('navigation', { name: 'Lingua' })
+    expect(within(nav).getAllByRole('link')).toHaveLength(1)
+    expect(within(nav).getByRole('link', { name: 'English' })).toHaveAttribute('href', '/proofmark/')
   })
 
   test('IT and EN swap the page, keep the hash and save the choice', async () => {
@@ -35,7 +40,6 @@ describe('language switch', () => {
     const it = screen.getByRole('link', { name: 'Italiano' })
     expect(it).toHaveAttribute('href', `/proofmark/it/verifica#sha256=${HEX}`)
     expect(it).toHaveAttribute('hreflang', 'it')
-    expect(screen.getByRole('link', { name: 'English' })).toHaveAttribute('aria-current', 'true')
     await userEvent.click(it)
     expect(window.location.pathname + window.location.hash).toBe(`/proofmark/it/verifica#sha256=${HEX}`)
     expect(localStorage.getItem('pm:lang')).toBe('it')
