@@ -80,7 +80,7 @@ export async function stampHash(
       merged++
     }
   }
-  if (merged === 0) throw new OtsError('network', 'Nessun calendario OpenTimestamps ha risposto.')
+  if (merged === 0) throw new OtsError('network', 'No OpenTimestamps calendar answered.')
   return serializeDetached({ hashOp: OP_SHA256, timestamp: root })
 }
 
@@ -149,11 +149,11 @@ export async function verifyOtsOnline(
     if (!blockRes.ok) throw new Error(`HTTP ${blockRes.status}`)
     block = await blockRes.json()
   } catch {
-    throw new OtsError('network', 'Impossibile contattare la rete Bitcoin per la verifica.')
+    throw new OtsError('network', 'Could not reach the Bitcoin network for verification.')
   }
   // Attestations commit to the merkle root in Bitcoin's internal (little-endian) byte order.
   if (bytesToHex(msg.slice().reverse()) !== block.merkle_root) {
-    throw new OtsError('invalid', `La prova non corrisponde al blocco Bitcoin #${height}.`)
+    throw new OtsError('invalid', `The proof does not match Bitcoin block #${height}.`, height)
   }
   return { block: height, blockTime: new Date(block.timestamp * 1000) }
 }

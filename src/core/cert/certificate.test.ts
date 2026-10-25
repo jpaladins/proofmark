@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { BLOCK_358391, CONFIRMED_OTS, confirmedCert, PENDING_HASH, pendingCert, REQUESTED_AT } from '@/test/certFixtures'
 import {
   CertError,
+  certLang,
   confirmCertificate,
   makeCertificateId,
   parseCertificate,
@@ -102,5 +103,39 @@ describe('JSON', () => {
     const c = JSON.parse(serializeCertificate(pendingCert()))
     c.kind = 'altro'
     expect(() => parseCertificate(JSON.stringify(c))).toThrowError(expect.objectContaining({ code: 'schema' }))
+  })
+})
+
+describe('language', () => {
+  test('a new certificate records its language and writes the declared note in it', () => {
+    const c = pendingCert({ author: 'Ada' }, { lang: 'en' })
+    expect(c.lang).toBe('en')
+    expect(c.declared?.note).toBe('declared by the applicant, not certified')
+    expect(pendingCert({ author: 'Ada' }, { lang: 'it' }).declared?.note).toBe('dichiarati dal richiedente, non certificati')
+  })
+
+  test('the attestation keeps the language of the receipt', () => {
+    expect(confirmedCert(undefined, { lang: 'en' }).lang).toBe('en')
+    expect(confirmCertificate(pendingCert(undefined, { lang: 'it' }), CONFIRMED_OTS, BLOCK_358391).lang).toBe('it')
+  })
+
+  test('a certificate issued before the English version has no lang and reads as Italian', () => {
+    const json = JSON.parse(serializeCertificate(pendingCert({ author: 'Ada' }, { lang: 'it' })))
+    delete json.lang
+    const c = parseCertificate(JSON.stringify(json))
+    expect(c.lang).toBeUndefined()
+    expect(certLang(c)).toBe('it')
+    expect(certLang(pendingCert(undefined, { lang: 'en' }))).toBe('en')
+  })
+
+  test.each([['fr'], [3]])('rejects an unknown language (%s)', (lang) => {
+    const json = JSON.parse(serializeCertificate(pendingCert(undefined, { lang: 'en' })))
+    json.lang = lang
+    expect(() => parseCertificate(JSON.stringify(json))).toThrowError(expect.objectContaining({ code: 'schema' }))
+  })
+
+  test('lang round-trips through JSON', () => {
+    const c = confirmedCert({ title: 'Work' }, { lang: 'en' })
+    expect(parseCertificate(serializeCertificate(c))).toEqual(c)
   })
 })

@@ -1,12 +1,16 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { PDFDocument } from 'pdf-lib'
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { PENDING_HASH, PENDING_OTS } from '@/test/certFixtures'
 import type { CertifyDeps } from '@/flow/certify'
 import { CertifyPage } from './pages/CertifyPage'
 import { Stepper } from './components/Stepper'
 import { buildReminderIcs } from './ics'
+
+// Italian pages: the copy asserted below is the Italian one.
+beforeEach(() => window.history.replaceState(null, '', '/proofmark/it/'))
+afterEach(() => window.history.replaceState(null, '', '/proofmark/it/'))
 
 const HASH = PENDING_HASH
 const PK = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3])
@@ -93,7 +97,7 @@ describe('CertifyPage', () => {
     const at = new Date(new Date(requested).getTime() + 3 * 3600_000)
     const hhmm = new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' }).format(at)
     const banner = await screen.findByRole('status', { name: 'Conferma Bitcoin in arrivo' })
-    expect(banner).toHaveTextContent('Tra qualche ora torna su jpaladins.github.io/proofmark/verifica')
+    expect(banner).toHaveTextContent('Tra qualche ora torna su jpaladins.github.io/proofmark/it/verifica')
     expect(banner).toHaveTextContent(`dopo le ${hhmm} circa`)
     expect(within(banner).getByRole('button', { name: 'Aggiungi promemoria al calendario' })).toBeInTheDocument()
   })
@@ -184,18 +188,26 @@ describe('Stepper', () => {
 })
 
 test('buildReminderIcs creates a calendar event pointing to the verify page', () => {
-  const ics = buildReminderIcs({ at: new Date('2026-10-17T19:20:58Z'), certId: 'PM-ABC-20261017', fileName: 'opera, v2.zip' })
+  const ics = buildReminderIcs({ at: new Date('2026-10-17T19:20:58Z'), certId: 'PM-ABC-20261017', fileName: 'opera, v2.zip', lang: 'it' })
   expect(ics).toContain('BEGIN:VCALENDAR\r\n')
   expect(ics).toContain('DTSTART:20261017T192058Z')
   expect(ics).toContain('SUMMARY:ProofMark — conferma Bitcoin')
-  expect(ics).toContain('URL:https://jpaladins.github.io/proofmark/verifica')
-  expect(ics.replace(/\r\n /g, '')).toContain('opera\\, v2.zip')
+  expect(ics).toContain('URL:https://jpaladins.github.io/proofmark/it/verifica')
+  expect(ics.replace(/\r\n /g, '')).toContain('opera\\, v2.zip e la ricevuta PM-ABC-20261017')
   expect(ics.trimEnd().endsWith('END:VCALENDAR')).toBe(true)
+})
+
+test('buildReminderIcs speaks English and points to the English verify page', () => {
+  const ics = buildReminderIcs({ at: new Date('2026-10-17T19:20:58Z'), certId: 'PM-ABC-20261017', fileName: 'work.zip', lang: 'en' })
+  expect(ics).toContain('SUMMARY:ProofMark — Bitcoin confirmation')
+  expect(ics).toContain('URL:https://jpaladins.github.io/proofmark/verify\r\n')
+  expect(ics).toContain('PRODID:-//ProofMark//Reminder//EN')
+  expect(ics.replace(/\r\n /g, '')).toContain('upload the archive work.zip and the receipt PM-ABC-20261017')
 })
 
 test('buildReminderIcs folds lines at 75 octets without splitting UTF-8 characters', () => {
   const fileName = `${'è'.repeat(60)}-${'a'.repeat(200)}.zip`
-  const ics = buildReminderIcs({ at: new Date('2026-10-17T19:20:58Z'), certId: 'PM-ABC-20261017', fileName })
+  const ics = buildReminderIcs({ at: new Date('2026-10-17T19:20:58Z'), certId: 'PM-ABC-20261017', fileName, lang: 'it' })
   const strict = new TextDecoder('utf-8', { fatal: true })
   const lines = ics.split('\r\n').slice(0, -1)
   for (const line of lines) {

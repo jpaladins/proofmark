@@ -1,11 +1,13 @@
 // Every string printed on the PDF, resolved for one certificate. The renderer only lays this out,
 // so the copy can be tested without parsing PDF content streams. Two documents share the layout:
 // the receipt (ricevuta, proof still pending: no date attested) and the attestation (attestato,
-// existence attested at the time of the Bitcoin block).
-import { APP_VERSION, DEVELOPER, VERIFY_DISPLAY } from '@/core/app'
-import type { Certificate } from '@/core/cert/certificate'
+// existence attested at the time of the Bitcoin block). The copy comes from `messages(lang).pdf`, in
+// the certificate's language; certificates without `lang` are Italian.
+import { APP_VERSION, DEVELOPER, verifyDisplayFor } from '@/core/app'
+import { certLang, type Certificate } from '@/core/cert/certificate'
 import { proofFileNames } from '@/core/cert/fileNames'
 import { localTimeZone, utcOffset } from '@/core/time'
+import { formatBytes, localeOf, messages } from '@/i18n'
 
 export type Row = { label: string; value: string; mono?: boolean; note?: string }
 export type Pill = { text: string; tone: 'ok' | 'warn' | 'muted' }
@@ -15,6 +17,10 @@ export type AttestatoContent = {
   id: string
   /** Credit printed in small capitals next to the ProofMark name. */
   brandCredit: string
+  /** Small-capitals line under the ProofMark name. */
+  tagline: string
+  /** Bare document name ("receipt", "attestato"), printed before the id in the page-2 header. */
+  docName: string
   docLabel: string
   tone: 'pending' | 'confirmed'
   issued: string
@@ -31,28 +37,21 @@ export type AttestatoContent = {
   warnings: { heading: string; body: string; bullets: string[] }
   limits: Row[]
   footer: [string, string]
+  /** Right side of each page footer ("Page 1 of 2"). */
+  pageLabels: [string, string]
+  /** Kicker in the header of page 2. */
+  page2Heading: string
   sections: Record<'declared' | 'subject' | 'bitcoin' | 'statement' | 'verify' | 'warnings' | 'limits', string>
 }
 
-export const PENDING_REMINDER = `Tra qualche ora torna su ${VERIFY_DISPLAY}, carica l'archivio e questa ricevuta e scarica l'attestato con la data certificata dalla blockchain.`
+type Locale = ReturnType<typeof localeOf>
 
-const fmtDate = (d: Date, timeZone: string) =>
-  new Intl.DateTimeFormat('it-IT', { timeZone, day: '2-digit', month: '2-digit', year: 'numeric' }).format(d)
-const fmtTime = (d: Date, timeZone: string) =>
-  new Intl.DateTimeFormat('it-IT', { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(d)
-const fmtLongDate = (d: Date, timeZone = 'UTC') =>
-  new Intl.DateTimeFormat('it-IT', { timeZone, day: 'numeric', month: 'long', year: 'numeric' }).format(d)
-
-export function formatBytes(size: number): string {
-  const units = ['byte', 'KB', 'MB', 'GB', 'TB']
-  let v = size
-  let i = 0
-  while (v >= 1024 && i < units.length - 1) {
-    v /= 1024
-    i++
-  }
-  return i === 0 ? `${size} byte` : `${v.toLocaleString('it-IT', { maximumFractionDigits: 1 })} ${units[i]}`
-}
+const fmtDate = (d: Date, timeZone: string, locale: Locale) =>
+  new Intl.DateTimeFormat(locale, { timeZone, day: '2-digit', month: '2-digit', year: 'numeric' }).format(d)
+const fmtTime = (d: Date, timeZone: string, locale: Locale) =>
+  new Intl.DateTimeFormat(locale, { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(d)
+const fmtLongDate = (d: Date, timeZone: string, locale: Locale) =>
+  new Intl.DateTimeFormat(locale, { timeZone, day: 'numeric', month: 'long', year: 'numeric' }).format(d)
 
 export function groupHash(hex: string): string {
   return hex.match(/.{1,8}/g)?.join(' ') ?? hex
@@ -62,185 +61,142 @@ export function buildAttestatoContent(
   cert: Certificate,
   opts: { attachments: { name: string; size: number }[]; timeZone?: string },
 ): AttestatoContent {
+  const lang = certLang(cert)
+  const locale = localeOf(lang)
+  const t = messages(lang).pdf
+  const verifyAddress = verifyDisplayFor(lang)
   // Local times are shown in the time zone of the device generating the document, with its offset.
   const tz = opts.timeZone ?? localTimeZone()
-  const local = (d: Date) => `${fmtTime(d, tz)} ${utcOffset(d, tz)}`
+  const date = (d: Date, zone = tz) => fmtDate(d, zone, locale)
+  const time = (d: Date, zone = tz) => fmtTime(d, zone, locale)
+  const local = (d: Date) => `${time(d)} ${utcOffset(d, tz)}`
   const confirmed = cert.kind === 'attestato' && cert.opentimestamps.status === 'confirmed'
+  const doc = confirmed ? t.attestation : t.receipt
   const ots = cert.opentimestamps
   const created = new Date(cert.createdAt)
   const requested = new Date(cert.requestedAt)
+  const modified = new Date(cert.file.lastModified)
   const blockTime = ots.blockTime ? new Date(ots.blockTime) : undefined
+  const block = ots.block ?? 0
   const name = cert.file.name
-  const docWord = confirmed ? 'attestato' : 'ricevuta'
   const files = proofFileNames(cert)
 
   const declaredRows: Row[] = []
-  if (cert.declared?.author) declaredRows.push({ label: 'Autore', value: cert.declared.author })
-  if (cert.declared?.title) declaredRows.push({ label: "Titolo dell'opera", value: cert.declared.title })
+  if (cert.declared?.author) declaredRows.push({ label: t.declared.author, value: cert.declared.author })
+  if (cert.declared?.title) declaredRows.push({ label: t.declared.title, value: cert.declared.title })
 
   const requestRow: Row = {
-    label: 'Richiesta inviata il',
-    value: `${fmtDate(requested, tz)} alle ${local(requested)}`,
-    note: '(orologio del dispositivo, non certificato)',
+    label: t.bitcoin.requested,
+    value: t.dateAtTime(date(requested), local(requested)),
+    note: t.bitcoin.requestedNote,
   }
 
   const bitcoin: AttestatoContent['bitcoin'] =
     confirmed && blockTime
       ? {
-          pill: { text: 'Confermato', tone: 'ok' },
+          pill: { text: t.bitcoin.confirmedPill, tone: 'ok' },
           rows: [
-            { label: 'Stato', value: 'Confermato sulla blockchain Bitcoin' },
-            { label: 'Blocco', value: `#${ots.block}` },
+            { label: t.bitcoin.status, value: t.bitcoin.confirmedStatus },
+            { label: t.bitcoin.block, value: `#${block}` },
             {
-              label: 'Data del blocco',
-              value: `${fmtDate(blockTime, 'UTC')} ${fmtTime(blockTime, 'UTC')} UTC`,
+              label: t.bitcoin.blockDate,
+              value: `${date(blockTime, 'UTC')} ${time(blockTime, 'UTC')} UTC`,
               ...(utcOffset(blockTime, tz) === 'UTC' ? {} : { note: `(${local(blockTime)})` }),
             },
-            {
-              label: 'Precisione',
-              value: "Circa due ore: è l'orario registrato dai miner nell'intestazione del blocco.",
-            },
-            { label: 'Protocollo', value: 'OpenTimestamps' },
+            { label: t.bitcoin.precision, value: t.bitcoin.precisionValue },
+            { label: t.bitcoin.protocol, value: 'OpenTimestamps' },
             requestRow,
           ],
         }
       : {
-          pill: { text: 'In attesa di conferma', tone: 'warn' },
+          pill: { text: t.bitcoin.pendingPill, tone: 'warn' },
           rows: [
-            { label: 'Stato', value: 'In attesa di conferma in un blocco Bitcoin' },
+            { label: t.bitcoin.status, value: t.bitcoin.pendingStatus },
             requestRow,
-            { label: 'Protocollo', value: 'OpenTimestamps' },
-            { label: 'Calendari', value: ots.calendars.map((c) => c.replace(/^https:\/\//, '')).join('\n'), mono: true },
+            { label: t.bitcoin.protocol, value: 'OpenTimestamps' },
+            { label: t.bitcoin.calendars, value: ots.calendars.map((c) => c.replace(/^https:\/\//, '')).join('\n'), mono: true },
           ],
-          reminder: { heading: "Ottieni l'attestato.", body: PENDING_REMINDER },
+          reminder: { heading: t.bitcoin.reminderHeading, body: t.pendingReminder(verifyAddress) },
         }
 
-  const bullets = [
-    ...(confirmed
-      ? []
-      : [
-          `Questa ricevuta non attesta una data. Dopo qualche ora torna su ${VERIFY_DISPLAY}, carica l'archivio e questa ricevuta e scarica l'attestato. Conserva poi anche l'attestato e la sua prova Bitcoin aggiornata (.ots).`,
-        ]),
-    `Conserva insieme: l'archivio .zip originale, questo ${docWord} e il file .ots con lo stesso nome dell'archivio.`,
-    'Fai più copie su supporti diversi (disco esterno, cloud).',
-    "Non rinominare l'archivio: il nome non incide sull'impronta, ma semplifica la verifica.",
-  ]
-
-  const blockHeading = blockTime ? `${fmtLongDate(blockTime)}, ${fmtTime(blockTime, 'UTC')} UTC` : ''
+  const blockHeading = blockTime ? `${fmtLongDate(blockTime, 'UTC', locale)}, ${time(blockTime, 'UTC')} UTC` : ''
 
   return {
     id: cert.id,
     brandCredit: `BY ${DEVELOPER.name.toUpperCase()}`,
-    docLabel: confirmed ? 'Attestato n.' : 'Ricevuta n.',
+    tagline: t.tagline,
+    docName: confirmed ? messages(lang).files.attestation : messages(lang).files.receipt,
+    docLabel: doc.docLabel,
     tone: confirmed ? 'confirmed' : 'pending',
-    issued: `Emesso il ${fmtDate(created, tz)} alle ${fmtTime(created, tz)} (${utcOffset(created, tz)})`,
-    title: confirmed ? 'Attestato di Esistenza Digitale' : 'Ricevuta di registrazione',
-    subtitle: confirmed
-      ? 'Prova di anteriorità tramite ancoraggio sulla blockchain Bitcoin (OpenTimestamps)'
-      : "Impronta dell'archivio inviata alla blockchain Bitcoin tramite OpenTimestamps",
+    issued: t.issued(date(created), time(created), utcOffset(created, tz)),
+    title: doc.title,
+    subtitle: doc.subtitle,
     hero: confirmed
       ? {
-          heading: `Esistenza attestata al ${blockHeading}`,
+          heading: t.attestation.heroHeading(blockHeading),
           stamp: blockTime && {
-            kicker: 'Esistenza attestata al',
+            kicker: t.attestation.stampKicker,
             // One time, in the device time zone with its offset; the date follows the same zone.
-            date: fmtLongDate(blockTime, tz),
+            date: fmtLongDate(blockTime, tz, locale),
             time: local(blockTime),
           },
-          body: `Un archivio con l'impronta SHA-256 riportata sotto esisteva non oltre questa data, come risulta dal blocco Bitcoin #${ots.block} che ne contiene la prova.`,
+          body: t.attestation.heroBody(block),
         }
-      : {
-          heading: 'Registrazione inviata: la data non è ancora attestata',
-          body: "L'impronta è stata inviata ai calendari OpenTimestamps, che la scriveranno in un blocco Bitcoin entro qualche ora. Solo allora potrai scaricare l'attestato con la data certificata dalla blockchain.",
-        },
-    qrCaption: 'Scansiona per verificare',
-    ...(declaredRows.length > 0
-      ? { declared: { tag: 'Dati dichiarati dal richiedente — non verificati né certificati', rows: declaredRows } }
-      : {}),
+      : { heading: t.receipt.heroHeading, body: t.receipt.heroBody },
+    qrCaption: t.qrCaption,
+    ...(declaredRows.length > 0 ? { declared: { tag: t.declared.tag, rows: declaredRows } } : {}),
     subject: {
       rows: [
-        { label: 'Nome del file', value: name, mono: true },
+        { label: t.subject.fileName, value: name, mono: true },
         {
-          label: 'Dimensione',
-          value: formatBytes(cert.file.size),
-          ...(cert.file.size >= 1024 ? { note: `(${cert.file.size.toLocaleString('it-IT')} byte)` } : {}),
+          label: t.subject.size,
+          value: formatBytes(cert.file.size, lang),
+          ...(cert.file.size >= 1024 ? { note: t.subject.exactBytes(cert.file.size.toLocaleString(locale)) } : {}),
         },
         {
-          label: "Ultima modifica (dal sistema dell'utente)",
-          value: `${fmtDate(new Date(cert.file.lastModified), tz)} ${fmtTime(new Date(cert.file.lastModified), tz).slice(0, 5)} ${utcOffset(new Date(cert.file.lastModified), tz)}`,
-          note: '— informazione non certificata',
+          label: t.subject.lastModified,
+          value: `${date(modified)} ${time(modified).slice(0, 5)} ${utcOffset(modified, tz)}`,
+          note: t.subject.lastModifiedNote,
         },
-        { label: 'Algoritmo di impronta', value: 'SHA-256' },
+        { label: t.subject.algorithm, value: 'SHA-256' },
       ],
       hash: groupHash(cert.file.sha256),
     },
     bitcoin,
-    statement: confirmed
-      ? `Il presente attestato documenta che un file avente l'impronta crittografica SHA-256 sopra indicata esisteva in data non successiva al ${blockHeading}, data del blocco Bitcoin #${ots.block} che ne contiene la prova. L'impronta è stata calcolata esclusivamente sul dispositivo del richiedente: il contenuto del file non è mai stato trasmesso a ProofMark né a terzi. L'attestato non certifica la paternità, il contenuto o l'originalità dell'opera, né i dati dichiarati dal richiedente.`
-      : "La presente ricevuta documenta che l'impronta crittografica SHA-256 sopra indicata è stata inviata ai calendari OpenTimestamps per la registrazione sulla blockchain Bitcoin. Non attesta ancora alcuna data: la data di esistenza sarà quella del blocco Bitcoin che conterrà la prova, riportata nell'attestato. L'impronta è stata calcolata esclusivamente sul dispositivo del richiedente: il contenuto del file non è mai stato trasmesso a ProofMark né a terzi.",
+    statement: confirmed ? t.attestation.statement(blockHeading, block) : t.receipt.statement,
     verify: {
-      intro: 'La verifica non richiede ProofMark: bastano strumenti standard e i file allegati a questo PDF.',
+      intro: t.verify.intro,
       steps: [
         {
-          title: "1. Ricalcola l'impronta dell'archivio",
-          code: [
-            '# Windows (Prompt dei comandi o PowerShell)',
-            `certutil -hashfile "${name}" SHA256`,
-            '# macOS / Linux',
-            `shasum -a 256 "${name}"`,
-          ],
+          title: t.verify.hashStep,
+          code: [t.verify.windowsComment, `certutil -hashfile "${name}" SHA256`, t.verify.unixComment, `shasum -a 256 "${name}"`],
         },
         {
-          title: "2. Verifica l'ancoraggio Bitcoin (client OpenTimestamps: opentimestamps.org)",
+          title: t.verify.otsStep,
           code: [
-            ...(confirmed ? [] : [`ots upgrade "${files.ots}"   # dopo la conferma, una volta`]),
+            ...(confirmed ? [] : [`ots upgrade "${files.ots}"   ${t.verify.upgradeComment}`]),
             `ots verify "${files.ots}" -f "${name}"`,
           ],
         },
-        {
-          title: '3. Oppure',
-          text: `scansiona il QR code o vai su ${VERIFY_DISPLAY} e carica l'archivio con questo PDF.`,
-        },
+        { title: t.verify.otherStep, text: t.verify.otherText(verifyAddress) },
       ],
-      attachmentsLabel: 'File allegati a questo PDF:',
-      attachments: opts.attachments.map((a) => `${a.name} · ${formatBytes(a.size)}`),
+      attachmentsLabel: t.verify.attachmentsLabel,
+      attachments: opts.attachments.map((a) => `${a.name} · ${formatBytes(a.size, lang)}`),
     },
     warnings: {
-      heading: "Conserva l'archivio esattamente com'è.",
-      body: `Se estrai i file e li ricomprimi, anche senza modificarli, l'impronta cambia e questo ${docWord === 'attestato' ? 'attestato' : 'documento'} non sarà più riconducibile all'archivio.`,
-      bullets,
+      heading: t.warnings.heading,
+      body: doc.warningsBody,
+      bullets: [...(confirmed ? [] : [t.warnings.pending(verifyAddress)]), doc.keepTogether, t.warnings.copies, t.warnings.noRename],
     },
     limits: [
-      {
-        label: 'Cosa dimostra',
-        value: confirmed
-          ? 'Che il file esisteva non oltre la data del blocco Bitcoin indicato e che da allora non è stato alterato.'
-          : "Solo che l'impronta è stata inviata per la registrazione. La data sarà dimostrata dall'attestato.",
-      },
-      { label: 'Cosa non dimostra', value: "Chi è l'autore, l'originalità dell'opera o la veridicità dei dati dichiarati." },
-      {
-        label: 'Blockchain',
-        value:
-          'La prova è ancorata alla blockchain Bitcoin, un registro pubblico che nessuno può modificare a posteriori. Chiunque può verificarla con OpenTimestamps senza fidarsi di ProofMark.',
-      },
-      {
-        label: 'Valore',
-        value:
-          'Elemento di prova liberamente valutabile. Non è una validazione temporale elettronica qualificata ai sensi del Regolamento (UE) 910/2014 (eIDAS). Per esigenze legali specifiche rivolgiti a un professionista.',
-      },
+      { label: t.limits.proves, value: doc.proves },
+      { label: t.limits.notProves, value: t.limits.notProvesValue },
+      { label: t.limits.blockchain, value: t.limits.blockchainValue },
+      { label: t.limits.value, value: t.limits.valueValue },
     ],
-    footer: [
-      'La prova crittografica è il file .ots allegato a questo PDF, verificabile con OpenTimestamps',
-      `Generato localmente nel browser · ProofMark v${APP_VERSION} · open source (AGPL-3.0)`,
-    ],
-    sections: {
-      declared: 'Dati dichiarati',
-      subject: 'Oggetto della certificazione',
-      bitcoin: 'Ancoraggio Bitcoin',
-      statement: 'Dichiarazione',
-      verify: 'Come verificare in modo indipendente',
-      warnings: 'Avvertenze importanti',
-      limits: 'Natura e limiti della prova',
-    },
+    footer: [t.footer.proof, t.footer.generated(APP_VERSION)],
+    pageLabels: [t.pageOf(1, 2), t.pageOf(2, 2)],
+    page2Heading: t.page2Heading,
+    sections: t.sections,
   }
 }

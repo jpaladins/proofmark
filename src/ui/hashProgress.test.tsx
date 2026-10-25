@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { PDFDocument } from 'pdf-lib'
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { HashProgress as Progress } from '@/core/hash/hashFile'
 import type { CertifyDeps } from '@/flow/certify'
 import { PENDING_HASH, PENDING_OTS, pendingCert } from '@/test/certFixtures'
@@ -9,6 +9,10 @@ import { HashProgress } from './components/HashProgress'
 import { formatEta } from './formatEta'
 import { CertifyPage } from './pages/CertifyPage'
 import { VerifyPage, type VerifyPageDeps } from './pages/VerifyPage'
+
+// Italian pages: the copy asserted below is the Italian one.
+beforeEach(() => window.history.replaceState(null, '', '/proofmark/it/'))
+afterEach(() => window.history.replaceState(null, '', '/proofmark/it/'))
 
 const MB = 1024 * 1024
 const PK = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1])
@@ -57,7 +61,7 @@ test.each([
   [61, 'circa 1 min rimanenti'],
   [3 * 3600, 'circa 180 min rimanenti'],
 ])('formatEta(%s) → %s', (sec, text) => {
-  expect(formatEta(sec)).toBe(text)
+  expect(formatEta(sec, 'it')).toBe(text)
 })
 
 test('the Certify page shows the progress panel while a large file is hashed', async () => {

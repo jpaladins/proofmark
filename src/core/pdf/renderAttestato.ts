@@ -17,15 +17,17 @@ import {
   type RGB,
 } from 'pdf-lib'
 import QRCode from 'qrcode'
-import { APP_URL, APP_VERSION, VERIFY_URL } from '@/core/app'
+import { APP_URL, APP_VERSION, verifyUrlFor } from '@/core/app'
 import type { Bytes } from '@/core/hash/sha256'
-import { serializeCertificate, type Certificate } from '@/core/cert/certificate'
+import { certLang, serializeCertificate, type Certificate } from '@/core/cert/certificate'
 import { proofFileNames } from '@/core/cert/fileNames'
+import { localeOf, messages, type Lang } from '@/i18n'
 import { buildAttestatoContent, type AttestatoContent, type Pill, type Row } from './content'
 import { loadFontBytes, type FontBytes } from './fonts'
 
-export function verifyUrl(sha256Hex: string): string {
-  return `${VERIFY_URL}#sha256=${sha256Hex}`
+/** Address of the QR code: Verify in the document's language, with the hash in the fragment. */
+export function verifyUrl(sha256Hex: string, lang: Lang): string {
+  return `${verifyUrlFor(lang)}#sha256=${sha256Hex}`
 }
 
 const hex = (h: string): RGB => rgb(parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255)
@@ -269,16 +271,16 @@ function drawPill(pen: Pen, pill: Pill, x: number, baseline: number) {
   pen.text(pill.text, x + 6, baseline + 0.3, pen.f.sansSemiBold, 7.2, tone.text)
 }
 
-function drawFooter(pen: Pen, left: string, page: number) {
+function drawFooter(pen: Pen, left: string, pageLabel: string) {
   const y = 34
   pen.hline(M, W - M, y + 12)
   drawLock(pen, M, y)
   pen.text(left, M + 12, y, pen.f.sans, 7, C.ink2)
-  pen.textRight(`${APP_URL.replace(/^https:\/\//, '')} · Pagina ${page} di 2`, W - M, y, pen.f.sans, 7, C.muted)
+  pen.textRight(`${APP_URL.replace(/^https:\/\//, '')} · ${pageLabel}`, W - M, y, pen.f.sans, 7, C.muted)
 }
 
 /** Draws page 1 and returns the lowest y its content reaches. */
-function drawPage1(pen: Pen, c: AttestatoContent, sha256: string, d = NORMAL): number {
+function drawPage1(pen: Pen, c: AttestatoContent, qrUrl: string, d = NORMAL): number {
   const { f } = pen
   drawGradientBar(pen.page)
   let y = H - M + 6
@@ -287,7 +289,7 @@ function drawPage1(pen: Pen, c: AttestatoContent, sha256: string, d = NORMAL): n
   drawLogo(pen, M, y, 30)
   pen.text('ProofMark', M + 38, y - 13, f.sansSemiBold, 14, C.ink)
   pen.text(c.brandCredit, M + 38 + pen.width('ProofMark', f.sansSemiBold, 14) + 6, y - 13, f.sansMedium, 6.5, C.muted)
-  pen.text('PROVA DI ESISTENZA DIGITALE', M + 38, y - 24, f.sans, 6.5, C.muted)
+  pen.text(c.tagline, M + 38, y - 24, f.sans, 6.5, C.muted)
   pen.textRight(c.docLabel, W - M, y - 7, f.sans, 7.5, C.muted)
   pen.textRight(c.id, W - M, y - 18, f.monoMedium, 9, C.ink)
   pen.textRight(c.issued, W - M, y - 28, f.sans, 7.5, C.muted)
@@ -343,7 +345,7 @@ function drawPage1(pen: Pen, c: AttestatoContent, sha256: string, d = NORMAL): n
   const qx = M + heroW + 12
   pen.roundRect(qx, y, qrBox, heroH, 6, C.white, C.line)
   const qr = qrPanelLayout(heroH)
-  drawQr(pen, verifyUrl(sha256), qx + (qrBox - qr.qrSize) / 2, y - qr.qrTop, qr.qrSize)
+  drawQr(pen, qrUrl, qx + (qrBox - qr.qrSize) / 2, y - qr.qrTop, qr.qrSize)
   const captionW = pen.width(c.qrCaption, f.sans, QR_CAPTION_SIZE)
   pen.text(c.qrCaption, qx + (qrBox - captionW) / 2, y - qr.captionBaseline, f.sans, QR_CAPTION_SIZE, C.muted)
   y -= heroH + d.gap
@@ -390,7 +392,7 @@ function drawPage1(pen: Pen, c: AttestatoContent, sha256: string, d = NORMAL): n
   pen.roundRect(M, y, CW, stH, 6, C.soft)
   pen.para(c.statement, M + 12, y - 8, CW - 24, f.serifSemiBold, 9, C.ink2, 1.45)
 
-  drawFooter(pen, c.footer[0], 1)
+  drawFooter(pen, c.footer[0], c.pageLabels[0])
   return y - stH
 }
 
@@ -400,8 +402,8 @@ function drawPage2(pen: Pen, c: AttestatoContent) {
   let y = H - M + 6
   pen.text('ProofMark', M, y - 10, f.sansSemiBold, 11, C.ink)
   pen.text(c.brandCredit, M + pen.width('ProofMark', f.sansSemiBold, 11) + 5, y - 10, f.sansMedium, 5.8, C.muted)
-  pen.text(`${c.docLabel.replace(/ n\.$/, '').toUpperCase()} ${c.id}`, M, y - 21, f.sans, 6.5, C.muted)
-  pen.textRight('Istruzioni di verifica e avvertenze', W - M, y - 10, f.sans, 8, C.muted)
+  pen.text(`${c.docName.toUpperCase()} ${c.id}`, M, y - 21, f.sans, 6.5, C.muted)
+  pen.textRight(c.page2Heading, W - M, y - 10, f.sans, 8, C.muted)
   y -= 30
   pen.hline(M, W - M, y)
   y -= 14
@@ -455,7 +457,7 @@ function drawPage2(pen: Pen, c: AttestatoContent) {
   y = sectionHeader(pen, n++, c.sections.limits, M, y, CW)
   drawRows(pen, c.limits, M, y, CW, 0.26)
 
-  drawFooter(pen, c.footer[1], 2)
+  drawFooter(pen, c.footer[1], c.pageLabels[1])
 }
 
 export async function renderAttestato(
@@ -475,18 +477,21 @@ export async function renderAttestato(
     }
   }
 
+  const lang = certLang(cert)
+  const t = messages(lang).pdf
   const json = new TextEncoder().encode(serializeCertificate(cert))
   const names = proofFileNames(cert)
   const files = [
-    { name: names.ots, bytes: proofs.ots, mime: 'application/vnd.opentimestamps.v1', description: 'Prova OpenTimestamps (blockchain Bitcoin)' },
-    { name: names.json, bytes: json, mime: 'application/json', description: 'Certificato ProofMark (JSON)' },
+    { name: names.ots, bytes: proofs.ots, mime: 'application/vnd.opentimestamps.v1', description: t.attachments.ots },
+    { name: names.json, bytes: json, mime: 'application/json', description: t.attachments.json },
   ]
   const content = buildAttestatoContent(cert, {
     attachments: files.map((x) => ({ name: x.name, size: x.bytes.length })),
   })
 
-  const fits = drawPage1(new Pen(DRY_PAGE, faces), content, cert.file.sha256) >= CONTENT_FLOOR
-  drawPage1(new Pen(doc.addPage([W, H]), faces), content, cert.file.sha256, fits ? NORMAL : DENSE)
+  const qrUrl = verifyUrl(cert.file.sha256, lang)
+  const fits = drawPage1(new Pen(DRY_PAGE, faces), content, qrUrl) >= CONTENT_FLOOR
+  drawPage1(new Pen(doc.addPage([W, H]), faces), content, qrUrl, fits ? NORMAL : DENSE)
   drawPage2(new Pen(doc.addPage([W, H]), faces), content)
 
   const now = new Date()
@@ -499,12 +504,12 @@ export async function renderAttestato(
     })
   }
   doc.setTitle(`${content.title} — ${cert.id}`, { showInWindowTitleBar: true })
-  doc.setSubject(`Prova di esistenza dell'archivio ${cert.file.name} (SHA-256 ${cert.file.sha256})`)
+  doc.setSubject(t.metaSubject(cert.file.name, cert.file.sha256))
   doc.setAuthor('ProofMark')
   doc.setCreator(`ProofMark v${APP_VERSION}`)
   doc.setProducer(`ProofMark v${APP_VERSION} (pdf-lib)`)
   doc.setKeywords(['ProofMark', 'OpenTimestamps', 'Bitcoin', cert.file.sha256])
-  doc.setLanguage('it-IT')
+  doc.setLanguage(localeOf(lang))
   doc.setCreationDate(now)
   doc.setModificationDate(now)
   return doc

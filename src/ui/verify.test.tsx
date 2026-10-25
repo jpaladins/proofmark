@@ -1,7 +1,10 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, test, vi } from 'vitest'
-import { confirmedCert, PENDING_HASH, PENDING_OTS, pendingCert } from '@/test/certFixtures'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import type { PDFDocument } from 'pdf-lib'
+import type { Certificate } from '@/core/cert/certificate'
+import { buildAttestato } from '@/flow/verify'
+import { BLOCK_358391, CONFIRMED_OTS, confirmedCert, PENDING_HASH, PENDING_OTS, pendingCert } from '@/test/certFixtures'
 import type { Check } from '@/core/verify/check'
 import { downloadBytes } from './download'
 import { VerifyPage, type VerifyPageDeps } from './pages/VerifyPage'
@@ -41,8 +44,9 @@ function fakeDeps(over: Partial<VerifyPageDeps> = {}): VerifyPageDeps {
 const zipInput = () => screen.getByLabelText('Seleziona archivio .zip')
 const evidenceInput = () => screen.getByLabelText('Seleziona ricevuta o attestato (PDF o JSON)')
 
+beforeEach(() => window.history.replaceState(null, '', '/proofmark/it/'))
 afterEach(() => {
-  window.history.replaceState(null, '', '/')
+  window.history.replaceState(null, '', '/proofmark/it/')
   vi.mocked(downloadBytes).mockClear()
 })
 
@@ -78,7 +82,7 @@ describe('VerifyPage', () => {
   })
 
   test('with a QR fragment, compares the archive alone against the expected hash', async () => {
-    window.history.replaceState(null, '', `/proofmark/verifica#sha256=${HASH}`)
+    window.history.replaceState(null, '', `/proofmark/it/verifica#sha256=${HASH}`)
     const user = userEvent.setup()
     const deps = fakeDeps()
     render(<VerifyPage deps={deps} />)
@@ -179,4 +183,27 @@ test('never offers the attestation when an offline check failed', async () => {
   await user.click(await screen.findByRole('button', { name: 'Controlla conferma Bitcoin (richiede connessione)' }))
   await screen.findByText('Confermato nel blocco #1')
   expect(screen.queryByRole('button', { name: 'Genera attestato' })).toBeNull()
+})
+
+test('the attestation follows the language of the receipt, not of the page', async () => {
+  window.history.replaceState(null, '', '/proofmark/it/verifica')
+  const user = userEvent.setup()
+  const renderAttestato = vi.fn(async (_cert: Certificate) => ({ save: async () => new Uint8Array([1]) }) as unknown as PDFDocument)
+  const deps = fakeDeps({
+    loadEvidence: vi.fn(async () => ({ cert: pendingCert(undefined, { lang: 'en' }), ots: PENDING_OTS })),
+    checkBitcoin: vi.fn(async () => ({
+      check: { id: 'bitcoin', status: 'ok', label: 'Confermato nel blocco #358391' } as Check,
+      upgraded: { ots: CONFIRMED_OTS, ...BLOCK_358391 },
+    })),
+    buildAttestato: (ev, upgraded) => buildAttestato(ev, upgraded, { renderAttestato }),
+  })
+  render(<VerifyPage deps={deps} />)
+  await user.upload(zipInput(), zip())
+  await user.upload(evidenceInput(), new File(['{}'], 'work_receipt.json', { type: 'application/json' }))
+  await user.click(screen.getByRole('button', { name: 'Verifica' }))
+  await user.click(await screen.findByRole('button', { name: 'Controlla conferma Bitcoin (richiede connessione)' }))
+  await user.click(await screen.findByRole('button', { name: 'Genera attestato' }))
+  await user.click(await screen.findByRole('button', { name: 'Scarica attestato PDF' }))
+  expect(vi.mocked(downloadBytes).mock.calls[0][1]).toMatch(/_attestation\.pdf$/)
+  expect(renderAttestato.mock.calls[0][0]).toMatchObject({ kind: 'attestato', lang: 'en' })
 })

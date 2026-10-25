@@ -1,6 +1,7 @@
 import { Moon, ShieldCheck, Sun } from 'lucide-react'
 import type { MouseEvent } from 'react'
-import { toUrl, useRoute, type Path } from '../router'
+import { toUrl, useRoute, type PageId } from '../router'
+import { useT } from '../LangContext'
 import { useTheme } from '../useTheme'
 import { cx } from '../cx'
 
@@ -24,17 +25,17 @@ export function Logo({ className }: { className?: string }) {
   )
 }
 
-function NavLink({ to, children }: { to: Path; children: string }) {
-  const { path, navigate } = useRoute()
-  const active = path === to
+function NavLink({ page, children }: { page: PageId; children: string }) {
+  const { page: current, lang, navigate } = useRoute()
+  const active = current === page
   const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
     e.preventDefault()
-    navigate(to)
+    navigate(page)
   }
   return (
     <a
-      href={toUrl(to)}
+      href={toUrl(page, lang)}
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
       className={cx(
@@ -51,12 +52,13 @@ function NavLink({ to, children }: { to: Path; children: string }) {
 
 export function ThemeToggle() {
   const { resolved, setTheme } = useTheme()
+  const t = useT().header
   const next = resolved === 'dark' ? 'light' : 'dark'
   return (
     <button
       type="button"
       onClick={() => setTheme(next)}
-      aria-label={next === 'dark' ? 'Passa al tema scuro' : 'Passa al tema chiaro'}
+      aria-label={next === 'dark' ? t.toDark : t.toLight}
       className="grid size-9 shrink-0 place-items-center rounded-md text-muted transition-colors hover:bg-sunken hover:text-ink"
     >
       {resolved === 'dark' ? <Sun aria-hidden className="size-4.5" /> : <Moon aria-hidden className="size-4.5" />}
@@ -65,16 +67,17 @@ export function ThemeToggle() {
 }
 
 export function Header() {
-  const { navigate } = useRoute()
+  const { lang, navigate } = useRoute()
+  const t = useT().header
   return (
     <header className="border-b border-line bg-surface/80 backdrop-blur supports-[backdrop-filter]:bg-surface/70 sticky top-0 z-20">
       {/* Below 420px the sections drop to a second row of full-width tabs, so the title always fits. */}
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-2 gap-y-2 px-4 py-3 min-[420px]:flex-nowrap sm:gap-x-6 sm:px-6">
         <a
-          href={toUrl('/')}
+          href={toUrl('certify', lang)}
           onClick={(e) => {
             e.preventDefault()
-            navigate('/')
+            navigate('certify')
           }}
           className="flex shrink-0 items-center gap-2.5"
         >
@@ -82,21 +85,21 @@ export function Header() {
           <span className="font-serif text-lg font-semibold tracking-tight">ProofMark</span>
         </a>
         <nav
-          aria-label="Sezioni"
+          aria-label={t.sections}
           className="order-last flex w-full items-center gap-1 rounded-lg bg-sunken p-1 min-[420px]:order-none min-[420px]:w-auto min-[420px]:shrink-0 min-[420px]:gap-0.5 min-[420px]:bg-transparent min-[420px]:p-0 sm:gap-1"
         >
-          <NavLink to="/">Certifica</NavLink>
-          <NavLink to="/verifica">Verifica</NavLink>
+          <NavLink page="certify">{t.certify}</NavLink>
+          <NavLink page="verify">{t.verify}</NavLink>
         </nav>
         <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
           <p className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-emerald/30 bg-emerald-soft px-3 py-1 text-xs font-medium text-emerald-ink lg:flex">
             <ShieldCheck aria-hidden className="size-3.5" />
-            <span>Zero-Knowledge: i file vengono elaborati solo nel tuo browser</span>
+            <span>{t.zeroKnowledge}</span>
           </p>
           {/* Below 640px only the shield, so the bar fits a 320px phone; the short label up to 1024px, then the full one. */}
           <p
             className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-emerald/30 bg-emerald-soft px-1.5 py-1 text-xs font-medium text-emerald-ink sm:px-2 lg:hidden"
-            title="Zero-Knowledge: i file vengono elaborati solo nel tuo browser"
+            title={t.zeroKnowledge}
           >
             <ShieldCheck aria-hidden className="size-3.5" />
             <span aria-hidden className="hidden sm:inline">

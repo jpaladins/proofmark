@@ -10,10 +10,13 @@ export type OtsErrorCode = 'malformed' | 'network' | 'invalid'
 
 export class OtsError extends Error {
   readonly code: OtsErrorCode
-  constructor(code: OtsErrorCode, message: string) {
+  /** For 'invalid': the Bitcoin block height the proof failed against, for the localized detail. */
+  readonly height?: number
+  constructor(code: OtsErrorCode, message: string, height?: number) {
     super(message)
     this.name = 'OtsError'
     this.code = code
+    this.height = height
   }
 }
 
@@ -52,7 +55,7 @@ const BINARY_OPS = new Set([OP_APPEND, OP_PREPEND])
 const UNARY_OPS = new Set([OP_SHA1, OP_RIPEMD160, OP_SHA256, OP_KECCAK256, OP_REVERSE, OP_HEXLIFY])
 const DIGEST_LENGTH: Record<number, number> = { [OP_SHA1]: 20, [OP_RIPEMD160]: 20, [OP_SHA256]: 32, [OP_KECCAK256]: 32 }
 
-const bad = (why: string) => new OtsError('malformed', `Prova OpenTimestamps non valida: ${why}.`)
+const bad = (why: string) => new OtsError('malformed', `Invalid OpenTimestamps proof: ${why}.`)
 const bytes = (u: Uint8Array): Bytes => new Uint8Array(u)
 const equal = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((x, i) => x === b[i])
 
@@ -75,7 +78,7 @@ export function applyOp(op: Op, msg: Bytes): Bytes {
     case OP_HEXLIFY:
       return new TextEncoder().encode([...msg].map((b) => b.toString(16).padStart(2, '0')).join(''))
     default:
-      throw bad(`operazione sconosciuta 0x${op.tag.toString(16)}`)
+      throw bad(`unknown operation 0x${op.tag.toString(16)}`)
   }
 }
 
@@ -101,17 +104,17 @@ class Reader {
   node(msg: Uint8Array) {
     this.nodes += 1
     this.msgBytes += msg.length
-    if (this.nodes > MAX_NODES || this.msgBytes > MAX_TOTAL_MSG) throw bad('prova troppo grande')
+    if (this.nodes > MAX_NODES || this.msgBytes > MAX_TOTAL_MSG) throw bad('proof too large')
   }
   get done() {
     return this.pos === this.buf.length
   }
   byte(): number {
-    if (this.pos >= this.buf.length) throw bad('fine inattesa dei dati')
+    if (this.pos >= this.buf.length) throw bad('unexpected end of data')
     return this.buf[this.pos++]
   }
   take(n: number): Bytes {
-    if (this.pos + n > this.buf.length) throw bad('fine inattesa dei dati')
+    if (this.pos + n > this.buf.length) throw bad('unexpected end of data')
     const out = bytes(this.buf.subarray(this.pos, this.pos + n))
     this.pos += n
     return out
@@ -124,12 +127,12 @@ class Reader {
       value += (b & 0x7f) * 2 ** shift
       if (!(b & 0x80)) return value
       shift += 7
-      if (shift > 42) throw bad('intero troppo grande')
+      if (shift > 42) throw bad('integer too large')
     }
   }
   varbytes(max: number): Bytes {
     const len = this.varuint()
-    if (len > max) throw bad('campo troppo lungo')
+    if (len > max) throw bad('field too long')
     return this.take(len)
   }
 }
@@ -162,11 +165,11 @@ class Writer {
 function readOp(r: Reader, tag: number): Op {
   if (BINARY_OPS.has(tag)) {
     const arg = r.varbytes(MAX_MSG)
-    if (arg.length === 0) throw bad('argomento vuoto')
+    if (arg.length === 0) throw bad('empty argument')
     return { tag, arg }
   }
   if (UNARY_OPS.has(tag)) return { tag }
-  throw bad(`operazione sconosciuta 0x${tag.toString(16)}`)
+  throw bad(`unknown operation 0x${tag.toString(16)}`)
 }
 
 function readAttestation(r: Reader): Attestation {
@@ -175,20 +178,20 @@ function readAttestation(r: Reader): Attestation {
   const p = new Reader(payload)
   if (equal(tag, TAG_PENDING)) {
     const uri = new TextDecoder().decode(p.varbytes(MAX_URI))
-    if (!p.done) throw bad("dati in eccesso nell'attestazione")
-    if (!/^[A-Za-z0-9.\-_/:]+$/.test(uri)) throw bad('URI del calendario non valido')
+    if (!p.done) throw bad('trailing data in the attestation')
+    if (!/^[A-Za-z0-9.\-_/:]+$/.test(uri)) throw bad('invalid calendar URI')
     return { kind: 'pending', uri }
   }
   if (equal(tag, TAG_BITCOIN)) {
     const height = p.varuint()
-    if (!p.done) throw bad("dati in eccesso nell'attestazione")
+    if (!p.done) throw bad('trailing data in the attestation')
     return { kind: 'bitcoin', height }
   }
   return { kind: 'unknown', tag, payload }
 }
 
 function readTimestamp(r: Reader, msg: Bytes, depth = 0): Timestamp {
-  if (depth > 256) throw bad('struttura troppo profonda')
+  if (depth > 256) throw bad('structure too deep')
   r.node(msg)
   const ts: Timestamp = { msg, attestations: [], ops: [] }
   const handle = (tag: number) => {
@@ -197,7 +200,7 @@ function readTimestamp(r: Reader, msg: Bytes, depth = 0): Timestamp {
     } else {
       const op = readOp(r, tag)
       const next = applyOp(op, msg)
-      if (next.length > MAX_MSG) throw bad('messaggio troppo lungo')
+      if (next.length > MAX_MSG) throw bad('message too long')
       ts.ops.push({ op, next: readTimestamp(r, next, depth + 1) })
     }
   }
@@ -232,7 +235,7 @@ function writeOp(w: Writer, op: Op) {
 
 function writeTimestamp(w: Writer, ts: Timestamp) {
   const { attestations, ops } = ts
-  if (attestations.length === 0 && ops.length === 0) throw bad('nodo vuoto')
+  if (attestations.length === 0 && ops.length === 0) throw bad('empty node')
   if (ops.length === 0) {
     attestations.slice(0, -1).forEach((a) => {
       w.byte(0xff)
@@ -259,7 +262,7 @@ function writeTimestamp(w: Writer, ts: Timestamp) {
 export function parseTimestamp(data: Uint8Array, msg: Bytes): Timestamp {
   const r = new Reader(data)
   const ts = readTimestamp(r, msg)
-  if (!r.done) throw bad('dati in eccesso')
+  if (!r.done) throw bad('trailing data')
   return ts
 }
 
@@ -271,15 +274,15 @@ export function serializeTimestamp(ts: Timestamp): Bytes {
 
 export function parseDetached(data: Uint8Array): DetachedFile {
   if (data.length < MAGIC.length || !equal(data.subarray(0, MAGIC.length), MAGIC)) {
-    throw bad('intestazione mancante')
+    throw bad('missing header')
   }
   const r = new Reader(data.subarray(MAGIC.length))
-  if (r.varuint() !== MAJOR_VERSION) throw bad('versione non supportata')
+  if (r.varuint() !== MAJOR_VERSION) throw bad('unsupported version')
   const hashOp = r.byte()
   const len = DIGEST_LENGTH[hashOp]
-  if (!len) throw bad('algoritmo di impronta non supportato')
+  if (!len) throw bad('unsupported digest algorithm')
   const timestamp = readTimestamp(r, r.take(len))
-  if (!r.done) throw bad('dati in eccesso')
+  if (!r.done) throw bad('trailing data')
   return { hashOp, timestamp }
 }
 
@@ -316,7 +319,7 @@ function serializeAttestationKey(a: Attestation): Bytes {
 
 /** Merges `other` (a timestamp for the same message) into `target`, in place. */
 export function mergeTimestamp(target: Timestamp, other: Timestamp): void {
-  if (!equal(target.msg, other.msg)) throw bad('impossibile unire prove di messaggi diversi')
+  if (!equal(target.msg, other.msg)) throw bad('cannot merge proofs of different messages')
   for (const a of other.attestations) {
     if (!target.attestations.some((b) => sameAttestation(a, b))) target.attestations.push(a)
   }

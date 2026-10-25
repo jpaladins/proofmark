@@ -5,7 +5,7 @@ import App from '@/App'
 import { useRoute } from './router'
 
 beforeEach(() => {
-  window.history.replaceState(null, '', '/')
+  window.history.replaceState(null, '', '/proofmark/it/')
   document.documentElement.classList.remove('dark')
   try {
     localStorage.clear()
@@ -13,7 +13,7 @@ beforeEach(() => {
     /* storage may be unavailable */
   }
 })
-afterEach(() => window.history.replaceState(null, '', '/'))
+afterEach(() => window.history.replaceState(null, '', '/proofmark/it/'))
 
 describe('header', () => {
   test('shows the brand and the zero-knowledge badge', () => {
@@ -27,10 +27,10 @@ describe('header', () => {
     render(<App />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/esisteva/i)
     await user.click(screen.getByRole('link', { name: 'Verifica' }))
-    expect(window.location.pathname).toBe('/proofmark/verifica')
+    expect(window.location.pathname).toBe('/proofmark/it/verifica')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/verifica/i)
     await user.click(screen.getByRole('link', { name: 'Certifica' }))
-    expect(window.location.pathname).toBe('/proofmark/')
+    expect(window.location.pathname).toBe('/proofmark/it/')
   })
 
   test('the theme toggle switches the dark class on <html>', async () => {
@@ -49,26 +49,26 @@ describe('router', () => {
     const r = useRoute()
     return (
       <p>
-        {r.path}|{r.hashParams.get('sha256')}
+        {r.page}|{r.hashParams.get('sha256')}
       </p>
     )
   }
 
   test('exposes the sha256 fragment on /verifica', () => {
-    window.history.replaceState(null, '', '/proofmark/verifica#sha256=abc')
+    window.history.replaceState(null, '', '/proofmark/it/verifica#sha256=abc')
     render(<Probe />)
-    expect(screen.getByText('/verifica|abc')).toBeInTheDocument()
+    expect(screen.getByText('verify|abc')).toBeInTheDocument()
   })
 
   test('falls back to / for unknown paths and follows history', () => {
-    window.history.replaceState(null, '', '/proofmark/nope')
+    window.history.replaceState(null, '', '/proofmark/it/nope')
     render(<Probe />)
-    expect(screen.getByText('/|')).toBeInTheDocument()
+    expect(screen.getByText('certify|')).toBeInTheDocument()
     act(() => {
-      window.history.pushState(null, '', '/proofmark/verifica')
+      window.history.pushState(null, '', '/proofmark/it/verifica')
       window.dispatchEvent(new PopStateEvent('popstate'))
     })
-    expect(screen.getByText('/verifica|')).toBeInTheDocument()
+    expect(screen.getByText('verify|')).toBeInTheDocument()
   })
 })
 
