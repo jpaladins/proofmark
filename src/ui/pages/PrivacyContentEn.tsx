@@ -108,9 +108,10 @@ export function PrivacyContentEn() {
       <Section id="not-done" title="What ProofMark does not do">
         <CheckItems items={NOT_DONE} />
         <p>
-          The only information saved in your browser is your choice between the light and dark theme, under the{' '}
-          <Code>pm-theme</Code> key in local storage, and only if you change it. It stays on your device and you can delete
-          it by clearing the site's data.
+          The only information saved in your browser, in local storage, is your choice between the light and dark theme,
+          under the <Code>pm-theme</Code> key, and only if you change it, and your choice of language, under the{' '}
+          <Code>pm:lang</Code> key, and only if you pick a language or close the notice offering the Italian version. Both
+          stay on your device and you can delete them by clearing the site's data.
         </p>
       </Section>
 

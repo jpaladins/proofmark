@@ -40,6 +40,15 @@ describe('Privacy e sicurezza', () => {
     expect(ROUTES.it.privacy).toBe('/it/privacy')
   })
 
+  test('states plainly that the archive never leaves the device', () => {
+    render(<PrivacyPage />)
+    expect(screen.getAllByText(/non lascia mai il tuo dispositivo/).length).toBeGreaterThan(0)
+  })
+})
+
+describe.each(['/proofmark/it/privacy', '/proofmark/privacy'])('privacy page at %s', (path) => {
+  beforeEach(() => window.history.replaceState(null, '', path))
+
   test('discloses every external service the site is allowed to contact', () => {
     const { container } = render(<PrivacyPage />)
     const text = container.textContent ?? ''
@@ -48,13 +57,9 @@ describe('Privacy e sicurezza', () => {
     for (const domain of domains) expect(text).toContain(domain)
   })
 
-  test('states plainly that the archive never leaves the device', () => {
-    render(<PrivacyPage />)
-    expect(screen.getAllByText(/non lascia mai il tuo dispositivo/).length).toBeGreaterThan(0)
-  })
-
-  test('discloses the only value stored in the browser', () => {
+  test('discloses every value stored in the browser', () => {
     const { container } = render(<PrivacyPage />)
     expect(container.textContent).toContain('pm-theme')
+    expect(container.textContent).toContain('pm:lang')
   })
 })

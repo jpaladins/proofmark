@@ -109,9 +109,10 @@ export function PrivacyContentIt() {
       <Section id="non-facciamo" title="Cosa ProofMark non fa">
         <CheckItems items={NOT_DONE} />
         <p>
-          L'unica informazione salvata nel tuo browser è la preferenza tra tema chiaro e scuro, nella chiave{' '}
-          <Code>pm-theme</Code> della memoria locale, e solo se la cambi. Resta sul tuo dispositivo e puoi cancellarla
-          svuotando i dati del sito.
+          Le uniche informazioni salvate nel tuo browser, nella memoria locale, sono la preferenza tra tema chiaro e scuro,
+          nella chiave <Code>pm-theme</Code>, e solo se la cambi, e la lingua scelta, nella chiave <Code>pm:lang</Code>, e
+          solo se scegli una lingua o chiudi l'avviso che propone la versione italiana. Restano sul tuo dispositivo e puoi
+          cancellarle svuotando i dati del sito.
         </p>
       </Section>
 
