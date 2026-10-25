@@ -44,6 +44,7 @@ existing documents under `docs/superpowers/` (spec and plan of 2026-10-17). The 
 pointing Italian readers to the Italian site (`/proofmark/it/`). Badge labels become English
 ("license AGPL-3.0", "zero-knowledge · the file never leaves the browser"). Code comments are
 already English; any Italian left in comments, workflow names or step names is translated.
+`docs/mockups/attestato-preview.html` (an early Italian mockup no code uses) is deleted.
 
 ### Commit history
 
@@ -137,9 +138,18 @@ type-checked. Messages are grouped by area (`header`, `certify`, `verify`, `priv
 
 ### Errors
 
-`CertError`, `OtsError`, `CertifyError` and `EvidenceError` keep their `code` and stop carrying
-user-facing Italian text: the UI maps `code` (plus any detail, e.g. a height or a name) to
-`messages.errors`. Their `message` stays an English developer description for logs and tests.
+Core errors (`CertError`, `OtsError`) keep their `code` and carry an English developer message that
+the UI never shows. The flows (`runCertification`, `loadEvidence`, `verifyOffline`, `checkBitcoin`)
+take the page `lang` and write every user-facing text they produce (step messages, check labels and
+details, `CertifyError` / `EvidenceError` messages) from `messages(lang)`; the UI shows those as it
+does today. Dates inside check labels use the same locale.
+
+### Rich page text
+
+Plain strings live in `src/i18n/` and are shared by core, flows and UI. Paragraphs with inline
+markup (links, `<Code>`, emphasis) live in `src/ui/i18n/{en,it}.tsx` as `ReactNode` values; the long
+Privacy page is two content components (`PrivacyContentEn.tsx`, `PrivacyContentIt.tsx`) rendered by
+`PrivacyPage` according to the language.
 
 ### Testing
 
