@@ -1,8 +1,16 @@
 import { useCallback, useRef, useState } from 'react'
 import { hashFile } from '@/core/hash/hashFile'
-import { messages, type Lang } from '@/i18n'
+import type { Lang } from '@/i18n'
 import { stampHash } from '@/core/ots/ots'
-import { CertifyError, runCertification, type CertifyDeps, type CertifyResult, type StepId, type StepState } from './certify'
+import {
+  CertifyError,
+  runCertification,
+  type CertifyDeps,
+  type CertifyErrorCode,
+  type CertifyResult,
+  type StepId,
+  type StepState,
+} from './certify'
 
 // pdf-lib, fontkit and the fonts are only needed at the last step: load them on demand.
 export const defaultCertifyDeps: CertifyDeps = {
@@ -22,7 +30,8 @@ type Declared = { author?: string; title?: string }
 export function useCertify(deps: CertifyDeps = defaultCertifyDeps) {
   const [steps, setSteps] = useState(IDLE)
   const [result, setResult] = useState<CertifyResult>()
-  const [error, setError] = useState<string>()
+  /** A code, not a text: the page words it in its current language. */
+  const [error, setError] = useState<CertifyErrorCode>()
   const [running, setRunning] = useState(false)
   const controller = useRef<AbortController | undefined>(undefined)
   const last = useRef<{ file: File; declared?: Declared; lang: Lang; resume: { sha256?: string } } | undefined>(
@@ -51,9 +60,9 @@ export function useCertify(deps: CertifyDeps = defaultCertifyDeps) {
         if (ctrl.signal.aborted) return
         if (err instanceof CertifyError) {
           last.current = { file, declared, lang, resume: err.resume }
-          setError(err.message)
+          setError(err.code)
         } else {
-          setError(messages(lang).errors.unexpected)
+          setError('unexpected')
         }
       } finally {
         if (!ctrl.signal.aborted) setRunning(false)
@@ -70,9 +79,13 @@ export function useCertify(deps: CertifyDeps = defaultCertifyDeps) {
     [run],
   )
 
-  const retry = useCallback(() => {
-    if (last.current) void run(last.current.file, last.current.declared, last.current.lang, last.current.resume)
-  }, [run])
+  /** Retries in `lang` (the page's current language), or in the language of the failed run. */
+  const retry = useCallback(
+    (lang?: Lang) => {
+      if (last.current) void run(last.current.file, last.current.declared, lang ?? last.current.lang, last.current.resume)
+    },
+    [run],
+  )
 
   const reset = useCallback(() => {
     controller.current?.abort()

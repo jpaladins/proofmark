@@ -38,7 +38,8 @@ function Field({ label, value, onChange, disabled }: { label: string; value: str
 
 export function CertifyPage({ deps = defaultCertifyDeps }: { deps?: CertifyDeps }) {
   const lang = useLang()
-  const t = useT().certify
+  const all = useT()
+  const t = all.certify
   const { steps, result, error, running, start, retry, reset } = useCertify(deps)
   const [author, setAuthor] = useState('')
   const [title, setTitle] = useState('')
@@ -115,8 +116,8 @@ export function CertifyPage({ deps = defaultCertifyDeps }: { deps?: CertifyDeps 
             <Stepper steps={steps} />
             {hashing && <HashProgress progress={steps.hash.hashProgress} />}
             {error && (
-              <Alert tone="danger" title={t.stopped} action={<Button onClick={retry}>{t.retry}</Button>}>
-                {error}
+              <Alert tone="danger" title={t.stopped} action={<Button onClick={() => retry(lang)}>{t.retry}</Button>}>
+                {all.errors[error]}
               </Alert>
             )}
           </div>

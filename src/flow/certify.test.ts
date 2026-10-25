@@ -4,7 +4,7 @@ import type { PDFDocument } from 'pdf-lib'
 import { CONFIRMED_OTS, PENDING_HASH, PENDING_OTS } from '@/test/certFixtures'
 import { messages } from '@/i18n'
 import { OtsError } from '@/core/ots/format'
-import { REMINDER_DELAY_MS, runCertification, type CertifyDeps, type StepId, type StepState } from './certify'
+import { noteText, REMINDER_DELAY_MS, runCertification, type CertifyDeps, type StepId, type StepState } from './certify'
 
 const zip = () => new File([new Uint8Array([0x50, 0x4b, 3, 4])], 'opera.zip')
 
@@ -66,28 +66,32 @@ describe('runCertification', () => {
       step: 'ots',
       resume: { sha256: PENDING_HASH },
     })
-    expect(rec.last.ots).toMatchObject({
-      status: 'error',
-      message: 'Impossibile raggiungere i calendari Bitcoin. Controlla la connessione e riprova.',
-    })
+    expect(rec.last.ots).toMatchObject({ status: 'error', note: { kind: 'error', code: 'ots' } })
     expect(rec.last.cert).toBeUndefined()
     expect(deps.renderAttestato).not.toHaveBeenCalled()
   })
 
-  test('writes every step message in the requested language', async () => {
+  test('reports step notes as language-independent data, worded at render in either language', async () => {
     const rec = recorder()
     const res = await runCertification({ file: zip(), lang: 'en' }, fakeDeps(), rec.onStep)
-    expect(rec.last.ots).toMatchObject({ status: 'done', message: '1 calendar' })
-    expect(messages('en').flow.calendars(3)).toBe('3 calendars')
+    expect(rec.last.ots).toMatchObject({ status: 'done', note: { kind: 'calendars', count: 1 } })
+    expect(rec.seen.find(([id, st]) => id === 'hash' && st.note)?.[1].note).toEqual({ kind: 'percent', value: 100 })
+    expect(noteText({ kind: 'calendars', count: 1 }, messages('en'))).toBe('1 calendar')
+    expect(noteText({ kind: 'calendars', count: 3 }, messages('it'))).toBe('3 calendari')
+    expect(noteText({ kind: 'percent', value: 42 }, messages('it'))).toBe('42%')
     expect(res.certificate.lang).toBe('en')
 
     const failing = recorder()
     const deps = fakeDeps({ stampHash: vi.fn(async () => Promise.reject(new OtsError('network', 'x'))) })
     await expect(runCertification({ file: zip(), lang: 'en' }, deps, failing.onStep)).rejects.toMatchObject({
       step: 'ots',
-      message: 'Could not reach the Bitcoin calendars. Check your connection and try again.',
+      code: 'ots',
     })
-    expect(failing.last.ots?.message).toBe('Could not reach the Bitcoin calendars. Check your connection and try again.')
+    expect(failing.last.ots?.note).toEqual({ kind: 'error', code: 'ots' })
+    expect(noteText(failing.last.ots!.note!, messages('en'))).toBe('Could not reach the Bitcoin calendars. Check your connection and try again.')
+    expect(noteText(failing.last.ots!.note!, messages('it'))).toBe(
+      'Impossibile raggiungere i calendari Bitcoin. Controlla la connessione e riprova.',
+    )
   })
 
   test('rejects a proof that does not commit to the archive hash', async () => {
@@ -102,7 +106,7 @@ describe('runCertification', () => {
     const rec = recorder()
     const deps = fakeDeps({ renderAttestato: vi.fn(async () => Promise.reject(new Error('font'))) })
     await expect(runCertification({ file: zip(), lang: 'it' }, deps, rec.onStep)).rejects.toMatchObject({ step: 'cert' })
-    expect(rec.last.cert).toMatchObject({ status: 'error', message: 'Impossibile generare la ricevuta PDF. Riprova.' })
+    expect(rec.last.cert).toMatchObject({ status: 'error', note: { kind: 'error', code: 'pdf' } })
   })
 
   test('aborting during hashing rejects with AbortError and calls nothing else', async () => {

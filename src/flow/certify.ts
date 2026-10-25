@@ -6,12 +6,22 @@ import type { Bytes } from '@/core/hash/sha256'
 import type { HashProgress } from '@/core/hash/hashFile'
 import { inspectOts } from '@/core/ots/ots'
 import type { FontBytes } from '@/core/pdf/fonts'
-import { messages, type Lang } from '@/i18n'
+import { messages, type Lang, type Messages } from '@/i18n'
 
 export type StepId = 'hash' | 'ots' | 'cert'
+/** Why a certification stopped: a key of the `errors` dictionary section. */
+export type CertifyErrorCode = 'hashRead' | 'ots' | 'otsMismatch' | 'pdf' | 'unexpected'
+/**
+ * What a step says under its name, as data rather than text, so that it can be shown in whatever
+ * language the page is in when it renders (the language can change while a certification runs).
+ */
+export type StepNote =
+  | { kind: 'percent'; value: number }
+  | { kind: 'calendars'; count: number }
+  | { kind: 'error'; code: CertifyErrorCode }
 export type StepState = {
   status: 'idle' | 'active' | 'done' | 'warn' | 'error'
-  message?: string
+  note?: StepNote
   progress?: number
   /** Byte-level detail while hashing, for the progress panel. */
   hashProgress?: HashProgress
@@ -34,14 +44,23 @@ export type CertifyDeps = {
 
 export const REMINDER_DELAY_MS = 3 * 3600_000
 
+/** A step note in the given dictionary's language. */
+export function noteText(note: StepNote, t: Messages): string {
+  if (note.kind === 'percent') return `${note.value}%`
+  if (note.kind === 'calendars') return t.flow.calendars(note.count)
+  return t.errors[note.code]
+}
+
 /** Thrown when a step fails; `resume` lets a retry skip the hashing already done. */
 export class CertifyError extends Error {
   readonly step: StepId
+  readonly code: CertifyErrorCode
   readonly resume: { sha256?: string }
-  constructor(step: StepId, message: string, resume: { sha256?: string }) {
-    super(message)
+  constructor(step: StepId, code: CertifyErrorCode, resume: { sha256?: string }) {
+    super(messages('en').errors[code])
     this.name = 'CertifyError'
     this.step = step
+    this.code = code
     this.resume = resume
   }
 }
@@ -57,7 +76,6 @@ export async function runCertification(
   signal?: AbortSignal,
   resume: { sha256?: string } = {},
 ): Promise<CertifyResult> {
-  const t = messages(input.lang)
   // 1. Hash
   let sha256 = resume.sha256
   if (!sha256) {
@@ -69,16 +87,15 @@ export async function runCertification(
           onStep('hash', {
             status: 'active',
             progress: p.total ? p.bytesDone / p.total : 1,
-            message: `${Math.round((p.total ? p.bytesDone / p.total : 1) * 100)}%`,
+            note: { kind: 'percent', value: Math.round((p.total ? p.bytesDone / p.total : 1) * 100) },
             hashProgress: p,
           }),
         signal,
       )
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') throw err
-      const message = t.errors.hashRead
-      onStep('hash', { status: 'error', message })
-      throw new CertifyError('hash', message, {})
+      onStep('hash', { status: 'error', note: { kind: 'error', code: 'hashRead' } })
+      throw new CertifyError('hash', 'hashRead', {})
     }
   }
   onStep('hash', { status: 'done', progress: 1 })
@@ -92,18 +109,18 @@ export async function runCertification(
     ots = await deps.stampHash(sha256, signal)
   } catch {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
-    onStep('ots', { status: 'error', message: t.errors.ots })
-    throw new CertifyError('ots', t.errors.ots, { sha256 })
+    onStep('ots', { status: 'error', note: { kind: 'error', code: 'ots' } })
+    throw new CertifyError('ots', 'ots', { sha256 })
   }
   let otsInfo: ReturnType<typeof inspectOts>
   try {
     otsInfo = inspectOts(ots)
     if (otsInfo.digestHex !== sha256) throw new Error('digest mismatch')
   } catch {
-    onStep('ots', { status: 'error', message: t.errors.otsMismatch })
-    throw new CertifyError('ots', t.errors.otsMismatch, { sha256 })
+    onStep('ots', { status: 'error', note: { kind: 'error', code: 'otsMismatch' } })
+    throw new CertifyError('ots', 'otsMismatch', { sha256 })
   }
-  onStep('ots', { status: 'done', message: t.flow.calendars(otsInfo.calendars.length) })
+  onStep('ots', { status: 'done', note: { kind: 'calendars', count: otsInfo.calendars.length } })
   throwIfAborted(signal)
 
   // 3. Receipt
@@ -113,8 +130,8 @@ export async function runCertification(
   try {
     pdf = new Uint8Array(await (await deps.renderAttestato(certificate, { ots })).save())
   } catch {
-    onStep('cert', { status: 'error', message: t.errors.pdf })
-    throw new CertifyError('cert', t.errors.pdf, { sha256 })
+    onStep('cert', { status: 'error', note: { kind: 'error', code: 'pdf' } })
+    throw new CertifyError('cert', 'pdf', { sha256 })
   }
   onStep('cert', { status: 'done' })
 

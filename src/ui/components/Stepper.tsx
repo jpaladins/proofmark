@@ -1,5 +1,5 @@
 import { AlertTriangle, Check, Loader2, X } from 'lucide-react'
-import type { StepId, StepState } from '@/flow/certify'
+import { noteText, type StepId, type StepState } from '@/flow/certify'
 import { cx } from '../cx'
 import { useT } from '../LangContext'
 
@@ -20,7 +20,8 @@ function Marker({ n, status }: { n: number; status: StepState['status'] }) {
 }
 
 export function Stepper({ steps }: { steps: Record<StepId, StepState> }) {
-  const t = useT().stepper
+  const all = useT()
+  const t = all.stepper
   return (
     <ol className="grid gap-3 sm:grid-cols-3 sm:gap-0" aria-label={t.label}>
       {ORDER.map((id, i) => {
@@ -47,7 +48,7 @@ export function Stepper({ steps }: { steps: Record<StepId, StepState> }) {
                 <span className="sr-only">: {t.status[s.status]}</span>
               </p>
               <p className={cx('mt-0.5 text-xs', s.status === 'error' ? 'text-red' : s.status === 'warn' ? 'text-amber' : 'text-muted')}>
-                {s.message ?? t.hints[id]}
+                {s.note ? noteText(s.note, all) : t.hints[id]}
               </p>
             </div>
           </li>
