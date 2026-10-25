@@ -1,58 +1,58 @@
-# ProofMark — Documento di design
+# ProofMark — Design document
 
-*Data: 2026-10-17 · Stato: in attesa di approvazione finale*
+*Date: 2026-10-17 · Status: awaiting final approval*
 
-## 1. Intento
+## 1. Intent
 
-ProofMark è un'app web gratuita che permette a chiunque di dimostrare che un archivio `.zip` esisteva in una certa data, a fini di prova di anteriorità (paternità d'autore, contestazioni di plagio). Si usa da un link, senza installare nulla. Il file non lascia mai il computer dell'utente: dal browser esce solo l'impronta SHA-256.
+ProofMark is a free web app that lets anyone prove that a `.zip` archive existed on a certain date, for the purpose of proving prior existence (authorship, plagiarism disputes). It is used from a link, with nothing to install. The file never leaves the user's computer: only the SHA-256 fingerprint leaves the browser.
 
-Il risultato deve essere credibile per un avvocato o un cliente. Il riferimento è il verbale fornito dall'utente (`Verbale_Acquisizione_Forense_yngbrb.pdf`), un PDF con una marca temporale DigiCert RFC 3161 incorporata come firma PAdES (`/DocTimeStamp`, `SubFilter /ETSI.RFC3161`), che Acrobat mostra come firma valida.
+The result must be credible to a lawyer or a client. The reference is the report supplied by the user (`Verbale_Acquisizione_Forense_yngbrb.pdf`), a PDF with a DigiCert RFC 3161 timestamp embedded as a PAdES signature (`/DocTimeStamp`, `SubFilter /ETSI.RFC3161`), which Acrobat shows as a valid signature.
 
-## 2. Obiettivi
+## 2. Goals
 
-1. Caricamento di **un solo file `.zip`** (drag & drop o selezione). Viene certificato l'archivio nel suo insieme, senza elencarne il contenuto.
-   Campi facoltativi **"Autore"** e **"Titolo dell'opera"** (testo libero, max 120 caratteri ciascuno), riportati nel PDF e nel JSON come **dichiarati dall'utente e non certificati**.
-2. Calcolo dell'SHA-256 nel browser, in un Web Worker, in streaming: deve funzionare anche oltre 1 GB senza bloccare l'interfaccia.
-3. Doppio ancoraggio temporale:
-   - **DigiCert TSA (RFC 3161)** sull'hash dello ZIP.
-   - **OpenTimestamps (Bitcoin)** sull'hash dello ZIP.
-4. Output scaricabili:
-   - **Attestato PDF** professionale, con QR code di verifica e marca DigiCert incorporata come firma PAdES sul PDF stesso, come nel verbale.
-   - **Certificato JSON** leggibile da macchina.
-   - I file grezzi **`.tsr`** (token RFC 3161) e **`.ots`** (prova OpenTimestamps), per verifiche indipendenti con `openssl` e `ots`.
-5. Sezione **"Verifica"** con due slot (ZIP originale + certificato JSON o PDF): ricalcola l'hash e controlla le prove crittografiche senza rete. Il controllo Bitcoin completo, opzionale, richiede la rete.
-6. Interfaccia di livello enterprise/fintech, in italiano, con tema chiaro/scuro, accessibile (WCAG AA).
-7. Costo zero per chi pubblica e per chi usa.
+1. Upload of **a single `.zip` file** (drag & drop or selection). The archive is certified as a whole, without listing its contents.
+   Optional fields **"Author"** and **"Title of the work"** (free text, max 120 characters each), reported in the PDF and in the JSON as **declared by the user and not certified**.
+2. SHA-256 computed in the browser, in a Web Worker, as a stream: it must work beyond 1 GB without freezing the interface.
+3. Double timestamp anchoring:
+   - **DigiCert TSA (RFC 3161)** on the ZIP hash.
+   - **OpenTimestamps (Bitcoin)** on the ZIP hash.
+4. Downloadable outputs:
+   - A professional **PDF attestation**, with a verification QR code and the DigiCert timestamp embedded as a PAdES signature on the PDF itself, as in the report.
+   - A machine-readable **JSON certificate**.
+   - The raw **`.tsr`** (RFC 3161 token) and **`.ots`** (OpenTimestamps proof) files, for independent verification with `openssl` and `ots`.
+5. A **"Verify"** section with two slots (original ZIP + JSON or PDF certificate): it recomputes the hash and checks the cryptographic proofs without a network. The full Bitcoin check, optional, requires the network.
+6. An enterprise/fintech-grade interface, in Italian, with light/dark theme, accessible (WCAG AA).
+7. Zero cost for whoever publishes and for whoever uses it.
 
-## 3. Non-obiettivi
+## 3. Non-goals
 
-- Nessun account, login, database o archiviazione lato server.
-- Nessun elenco dei file contenuti nello ZIP (scelta dell'utente: il PDF deve restare leggero).
-- Nessuna app desktop per ora. Windows verrà valutato dopo, quindi il codice va tenuto impacchettabile con Tauri.
-- Nessuna firma digitale personale dell'autore (CNS/SPID/firma qualificata).
+- No accounts, login, database or server-side storage.
+- No list of the files contained in the ZIP (user's choice: the PDF must stay light).
+- No desktop app for now. Windows will be evaluated later, so the code must be kept packageable with Tauri.
+- No personal digital signature of the author (CNS/SPID/qualified signature).
 
-## 4. Anti-obiettivi (fallimento anche se "funziona")
+## 4. Anti-goals (failure even if it "works")
 
-- **Il file o il suo contenuto lascia il browser**, anche solo in parte o per telemetria.
-- **Il PDF o l'interfaccia promettono più di quanto valga la prova.** La TSA pubblica di DigiCert *non* è una marca temporale qualificata eIDAS né un servizio accreditato AgID. I testi devono parlare di "prova di esistenza / anteriorità" e "marca temporale RFC 3161", mai di "marca temporale qualificata" o di "data certa ai sensi di legge". Una sezione dei limiti va scritta in chiaro.
-- **L'utente non capisce che deve conservare lo ZIP byte per byte.** Se ricomprime i file, l'hash cambia e la prova non vale più. L'avviso deve essere ben visibile sia nella schermata finale sia nel PDF.
-- **Si spende denaro.** Tutto deve stare nei piani gratuiti.
+- **The file or its contents leave the browser**, even partially or through telemetry.
+- **The PDF or the interface promise more than the proof is worth.** DigiCert's public TSA is *not* an eIDAS qualified timestamp nor an AgID-accredited service. The texts must speak of "proof of existence / prior existence" and "RFC 3161 timestamp", never of "qualified timestamp" or "certain date in the eyes of the law". A limitations section must be written in plain terms.
+- **The user does not understand that they must keep the ZIP byte for byte.** If they recompress the files, the hash changes and the proof is no longer valid. The warning must be clearly visible both on the final screen and in the PDF.
+- **Money is spent.** Everything must fit in the free tiers.
 
-## 5. Vincoli e scelte già decise con l'utente
+## 5. Constraints and choices already agreed with the user
 
-| Tema | Decisione |
+| Topic | Decision |
 |---|---|
-| Piattaforma | App web su **Cloudflare Pages** (piano free). Al posto di GitHub Pages, che non permette codice lato server. |
-| Inoltro DigiCert | Una **Pages Function** sullo stesso dominio inoltra a `http://timestamp.digicert.com` la sola `TimeStampReq` (~60 byte con l'hash). Serve perché DigiCert funziona solo in HTTP e non abilita il CORS. |
-| Input | Solo un file `.zip`. |
-| Contenuto del PDF | Delegato al builder: "il più professionale possibile". Vedi §7. |
-| Stack | Vite + React + TypeScript + Tailwind CSS + Lucide React (dalla richiesta originale). |
-| Repository | GitHub, con README professionale, badge e link alla demo. |
+| Platform | Web app on **Cloudflare Pages** (free tier). Instead of GitHub Pages, which does not allow server-side code. |
+| DigiCert forwarding | A **Pages Function** on the same domain forwards only the `TimeStampReq` (~60 bytes with the hash) to `http://timestamp.digicert.com`. Needed because DigiCert only works over HTTP and does not enable CORS. |
+| Input | A `.zip` file only. |
+| PDF content | Delegated to the builder: "as professional as possible". See §7. |
+| Stack | Vite + React + TypeScript + Tailwind CSS + Lucide React (from the original request). |
+| Repository | GitHub, with a professional README, badges and a link to the demo. |
 
-## 6. Architettura
+## 6. Architecture
 
 ```
-Browser (tutto il lavoro)                      Cloudflare Pages
+Browser (all the work)                         Cloudflare Pages
 ┌───────────────────────────────────┐          ┌──────────────────────────────┐
 │ React UI                          │          │ static assets (dist/)        │
 │  ├─ DropZone (.zip only)          │          │                              │
@@ -66,142 +66,142 @@ Browser (tutto il lavoro)                      Cloudflare Pages
 
 ### 6.1 Hashing
 
-- Web Worker dedicato. Legge il `File` a blocchi (`file.stream()` o slice da 8–16 MB) e invia progressi alla UI (percentuale, MB/s, tempo stimato).
-- **Nota tecnica:** `crypto.subtle.digest` della Web Crypto API non è incrementale e richiederebbe tutto il file in memoria, quindi non regge file da più di 1 GB. Per lo streaming si usa **`hash-wasm`** (SHA-256 in WASM, incrementale). *Scelta del builder.* Si può aggiungere un self-test all'avvio che confronta il risultato di `hash-wasm` con Web Crypto su un vettore noto.
-- Validazione dell'input: estensione `.zip` **e** magic bytes `PK\x03\x04` (o `PK\x05\x06` per ZIP vuoto). Se non corrispondono, il file viene rifiutato con un feedback visivo nella DropZone.
+- Dedicated Web Worker. It reads the `File` in chunks (`file.stream()` or 8–16 MB slices) and sends progress to the UI (percentage, MB/s, estimated time).
+- **Technical note:** the Web Crypto API's `crypto.subtle.digest` is not incremental and would require the whole file in memory, so it cannot handle files larger than 1 GB. For streaming, **`hash-wasm`** (SHA-256 in WASM, incremental) is used. *Builder's choice.* A startup self-test can be added that compares the `hash-wasm` result with Web Crypto on a known vector.
+- Input validation: `.zip` extension **and** magic bytes `PK\x03\x04` (or `PK\x05\x06` for an empty ZIP). If they do not match, the file is rejected with visual feedback in the DropZone.
 
-### 6.2 Marca DigiCert (RFC 3161)
+### 6.2 DigiCert timestamp (RFC 3161)
 
-- Il client costruisce la `TimeStampReq` in DER: SHA-256, `nonce` casuale a 64 bit, `certReq = true`, così il token include i certificati della catena.
+- The client builds the `TimeStampReq` in DER: SHA-256, random 64-bit `nonce`, `certReq = true`, so the token includes the chain's certificates.
 - Pages Function `functions/api/tsa.ts`:
-  - accetta solo `POST` con `Content-Type: application/timestamp-query`;
-  - corpo ≤ 1 KB, che deve iniziare con `0x30` (SEQUENCE DER);
-  - inoltra a `http://timestamp.digicert.com` e restituisce `application/timestamp-reply`;
-  - non registra il corpo nei log;
-  - rate limit con una regola gratuita di Cloudflare (es. 20 richieste/minuto per IP). *Scelta del builder.*
-- Il client analizza la `TimeStampResp`, verifica `status = granted`, `messageImprint` = hash dello ZIP e `nonce` uguale a quello inviato, poi conserva il token (`.tsr`).
+  - accepts only `POST` with `Content-Type: application/timestamp-query`;
+  - body ≤ 1 KB, which must start with `0x30` (DER SEQUENCE);
+  - forwards to `http://timestamp.digicert.com` and returns `application/timestamp-reply`;
+  - does not log the body;
+  - rate limit with a free Cloudflare rule (e.g. 20 requests/minute per IP). *Builder's choice.*
+- The client parses the `TimeStampResp`, checks `status = granted`, `messageImprint` = ZIP hash and `nonce` equal to the one sent, then keeps the token (`.tsr`).
 
 ### 6.3 OpenTimestamps
 
-- SDK browser `javascript-opentimestamps`, chiamato direttamente verso i calendar pubblici, che abilitano il CORS.
-- Alla creazione la prova è "in attesa": la conferma in un blocco Bitcoin arriva tipicamente dopo alcune ore. L'interfaccia e il PDF lo spiegano.
-- La sezione Verifica permette di **aggiornare** il file `.ots` quando la conferma è disponibile (richiede rete) e di scaricare la versione completa.
+- Browser SDK `javascript-opentimestamps`, called directly against the public calendars, which enable CORS.
+- When created the proof is "pending": confirmation in a Bitcoin block typically arrives after a few hours. The interface and the PDF explain this.
+- The Verify section lets the user **upgrade** the `.ots` file when confirmation is available (requires the network) and download the complete version.
 
-### 6.3.1 Attestato aggiornato (rev. 2)
+### 6.3.1 Updated attestation (rev. 2)
 
-Il primo PDF non può cambiare, perché è sigillato PAdES. La conferma Bitcoin si ottiene così:
+The first PDF cannot change, because it is sealed with PAdES. The Bitcoin confirmation is obtained as follows:
 
-1. L'utente apre **Verifica** e carica lo ZIP + il PDF (o il JSON). L'app estrae l'`.ots`, vede che è "in attesa" e chiede l'aggiornamento ai calendar.
-2. **Se la conferma non c'è ancora:** messaggio "Conferma non ancora disponibile, riprova tra qualche ora", con l'orario indicativo.
-3. **Se la conferma c'è:** l'app mostra "Confermato nel blocco #N del <data>" e offre:
-   - il nuovo `.ots` completo;
-   - l'**attestato rev. 2**: stesso ID (suffisso `-R2`), stessa marca DigiCert sull'archivio, sezione Bitcoin con "✅ Confermato — blocco N, data/ora del blocco", `.ots` aggiornato in allegato e nuovo sigillo PAdES sul PDF;
-   - il JSON aggiornato (`opentimestamps.status = "confirmed"`, `block`, `blockTime`, `revision: 2`).
+1. The user opens **Verify** and uploads the ZIP + the PDF (or the JSON). The app extracts the `.ots`, sees that it is "pending" and asks the calendars for the upgrade.
+2. **If the confirmation is not there yet:** message "Confirmation not available yet, try again in a few hours", with the indicative time.
+3. **If the confirmation is there:** the app shows "Confirmed in block #N of <date>" and offers:
+   - the new, complete `.ots`;
+   - the **rev. 2 attestation**: same ID (suffix `-R2`), same DigiCert timestamp on the archive, Bitcoin section with "✅ Confirmed — block N, block date/time", updated `.ots` attached and a new PAdES seal on the PDF;
+   - the updated JSON (`opentimestamps.status = "confirmed"`, `block`, `blockTime`, `revision: 2`).
 
-**Avvisi obbligatori** finché la prova è in attesa:
-- **Nel primo PDF**, sezione Ancoraggio Bitcoin: "Stato all'emissione: in attesa di conferma", più un riquadro evidenziato: "Tra qualche ora torna su proofmark.pages.dev/verifica, carica l'archivio e questo PDF e scarica l'attestato aggiornato con la conferma Bitcoin." Lo stesso promemoria compare anche a pagina 2, tra le avvertenze.
-- **Sul sito**, nella schermata di completamento: un banner informativo con lo stesso messaggio e l'orario indicativo ("dopo le 21:30 circa"), più un pulsante "Aggiungi promemoria al calendario" che genera un file `.ics` locale, senza servizi esterni. *Il pulsante `.ics` è una scelta del builder.*
+**Mandatory notices** while the proof is pending:
+- **In the first PDF**, Bitcoin anchoring section: "Status at issuance: pending confirmation", plus a highlighted box: "In a few hours, go back to proofmark.pages.dev/verifica, upload the archive and this PDF and download the updated attestation with the Bitcoin confirmation." The same reminder also appears on page 2, among the warnings.
+- **On the site**, on the completion screen: an informational banner with the same message and the indicative time ("after about 21:30"), plus an "Add reminder to calendar" button that generates a local `.ics` file, with no external services. *The `.ics` button is the builder's choice.*
 
-### 6.4 Attestato PDF con PAdES
+### 6.4 PDF attestation with PAdES
 
-- Generazione nel browser con **`pdf-lib`** (+ `@pdf-lib/fontkit`), con font incorporati: un sans per il testo e un mono per gli hash, entrambi con licenza OFL.
-- Il **`.tsr` e l'`.ots` vengono allegati dentro il PDF** come file incorporati, così il PDF da solo contiene tutte le prove. Pesano pochi KB. *Scelta del builder.*
-- Firma del documento: si aggiunge un campo firma con dizionario `/DocTimeStamp`, `SubFilter /ETSI.RFC3161` e `/ByteRange` + `/Contents` segnaposto (~16 KB). Si calcola lo SHA-256 dei byte coperti, si chiede una **seconda** marca a DigiCert tramite la stessa funzione e si inserisce il token nel segnaposto. Risultato atteso: Acrobat mostra una marca temporale valida sul documento, come nel verbale.
-- Ci sono quindi **due marche DigiCert**: la prima sull'hash dello ZIP (la prova vera), la seconda sul PDF (che lo rende integro e verificabile in Acrobat).
+- Generated in the browser with **`pdf-lib`** (+ `@pdf-lib/fontkit`), with embedded fonts: a sans for the text and a mono for the hashes, both OFL-licensed.
+- The **`.tsr` and `.ots` are attached inside the PDF** as embedded files, so the PDF alone contains all the proofs. They weigh a few KB. *Builder's choice.*
+- Document signature: a signature field is added with a `/DocTimeStamp` dictionary, `SubFilter /ETSI.RFC3161` and placeholder `/ByteRange` + `/Contents` (~16 KB). The SHA-256 of the covered bytes is computed, a **second** timestamp is requested from DigiCert through the same function, and the token is inserted into the placeholder. Expected result: Acrobat shows a valid timestamp on the document, as in the report.
+- There are therefore **two DigiCert timestamps**: the first on the ZIP hash (the real proof), the second on the PDF (which makes it tamper-evident and verifiable in Acrobat).
 
-### 6.5 Verifica
+### 6.5 Verification
 
-- **Slot 1:** lo ZIP. **Slot 2:** il certificato JSON *oppure* l'attestato PDF, da cui si estraggono gli allegati `.tsr`/`.ots` e i dati.
-- Controlli **offline**:
-  1. l'hash ricalcolato dello ZIP coincide con quello certificato;
-  2. il `messageImprint` del token RFC 3161 coincide con l'hash;
-  3. la firma CMS del token è valida (**`pkijs`**);
-  4. la catena del certificato del TSA porta a **DigiCert Trusted Root G4**, incluso nell'app come trust anchor fisso;
-  5. la prova `.ots` si riferisce all'hash (verifica strutturale).
-- Controllo **online opzionale**: verifica dell'attestazione Bitcoin dell'`.ots` (block header da un explorer pubblico con CORS, es. Blockstream Esplora) e aggiornamento della prova.
-- L'esito si presenta come lista di controlli con stato verde, giallo o rosso e una spiegazione in linguaggio semplice.
+- **Slot 1:** the ZIP. **Slot 2:** the JSON certificate *or* the PDF attestation, from which the `.tsr`/`.ots` attachments and the data are extracted.
+- **Offline** checks:
+  1. the recomputed hash of the ZIP matches the certified one;
+  2. the `messageImprint` of the RFC 3161 token matches the hash;
+  3. the CMS signature of the token is valid (**`pkijs`**);
+  4. the TSA certificate chain leads to **DigiCert Trusted Root G4**, included in the app as a fixed trust anchor;
+  5. the `.ots` proof refers to the hash (structural check).
+- **Optional online** check: verification of the `.ots` Bitcoin attestation (block header from a public explorer with CORS, e.g. Blockstream Esplora) and upgrade of the proof.
+- The outcome is presented as a list of checks with green, yellow or red status and a plain-language explanation.
 
 ### 6.6 QR code
 
-- Il QR punta a `https://<dominio>/verifica#sha256=<hash>`. L'hash sta nel **frammento** (`#`), che il browser non invia al server. Aprendo il link, la pagina di verifica è precompilata con l'hash atteso e chiede di caricare lo ZIP.
+- The QR points to `https://<domain>/verifica#sha256=<hash>`. The hash is in the **fragment** (`#`), which the browser does not send to the server. When the link is opened, the verification page is prefilled with the expected hash and asks for the ZIP to be uploaded.
 
-## 7. Contenuto dell'attestato PDF (scelta del builder, delegata dall'utente)
+## 7. Content of the PDF attestation (builder's choice, delegated by the user)
 
-Formato A4, una o due pagine, impaginazione sobria da documento notarile/tecnico.
+A4 format, one or two pages, sober layout in the style of a notarial/technical document.
 
-1. **Intestazione:** logo ProofMark, titolo **"Attestato di Esistenza Digitale"**, sottotitolo "Prova di anteriorità tramite marca temporale RFC 3161 e ancoraggio Bitcoin", ID attestato (es. `PM-` + primi 12 caratteri dell'hash + data), data di emissione.
-2. **Dati dichiarati** (solo se compilati): Autore e Titolo dell'opera, in un riquadro con la dicitura "Dati dichiarati dal richiedente — non verificati né certificati". Sono coperti dal sigillo PAdES del PDF ma non dalla marca sull'hash dello ZIP.
-3. **Oggetto della certificazione:** nome del file, dimensione in byte e formato leggibile, data di ultima modifica dichiarata dal sistema dell'utente (marcata come "non certificata"), **impronta SHA-256** in monospace, divisa in gruppi da 8 caratteri.
-4. **Marca temporale RFC 3161:** autorità (nome dal certificato del TSA, es. "DigiCert SHA256 RSA4096 Timestamp Responder 2026"), data e ora in UTC e Europe/Rome, numero di serie del token, policy OID, algoritmo, nonce, impronta SHA-256 del token.
-5. **Ancoraggio blockchain Bitcoin:** protocollo OpenTimestamps, calendar usati, stato al momento dell'emissione ("in attesa di conferma") e istruzioni per l'aggiornamento.
-6. **Dichiarazione:** un testo formale che spiega cosa attesta il documento: un file con quell'impronta esisteva non dopo la data indicata. Spiega anche cosa *non* attesta: la paternità in sé, il contenuto, la qualificazione eIDAS.
-7. **Come verificare in modo indipendente:** comandi pronti da copiare:
-   - Windows: `certutil -hashfile archivio.zip SHA256`
-   - macOS/Linux: `shasum -a 256 archivio.zip`
-   - `openssl ts -verify -digest <hash> -in prova.tsr -CAfile digicert-root-g4.pem`
-   - `ots verify prova.ots`
-   - oppure il QR code verso ProofMark.
-8. **Avvertenze:** conservare lo ZIP originale senza modificarlo né ricomprimerlo, conservare il PDF e l'`.ots` aggiornato, limiti della prova.
-9. **Piè di pagina:** "Documento sigillato con marca temporale RFC 3161 — verificabile in Adobe Acrobat", numero di pagina, URL dell'app. Il QR code sta nell'angolo della prima pagina.
+1. **Header:** ProofMark logo, title **"Digital Existence Attestation"**, subtitle "Proof of prior existence through an RFC 3161 timestamp and Bitcoin anchoring", attestation ID (e.g. `PM-` + first 12 characters of the hash + date), issue date.
+2. **Declared data** (only if filled in): Author and Title of the work, in a box labelled "Data declared by the requester — not verified or certified". They are covered by the PDF's PAdES seal but not by the timestamp on the ZIP hash.
+3. **Subject of the certification:** file name, size in bytes and in readable format, last-modified date as declared by the user's system (marked "not certified"), **SHA-256 fingerprint** in monospace, split into groups of 8 characters.
+4. **RFC 3161 timestamp:** authority (name from the TSA certificate, e.g. "DigiCert SHA256 RSA4096 Timestamp Responder 2026"), date and time in UTC and Europe/Rome, token serial number, policy OID, algorithm, nonce, SHA-256 fingerprint of the token.
+5. **Bitcoin blockchain anchoring:** OpenTimestamps protocol, calendars used, status at the time of issuance ("pending confirmation") and upgrade instructions.
+6. **Declaration:** a formal text explaining what the document attests: a file with that fingerprint existed no later than the indicated date. It also explains what it does *not* attest: authorship itself, the content, eIDAS qualification.
+7. **How to verify independently:** ready-to-copy commands:
+   - Windows: `certutil -hashfile archive.zip SHA256`
+   - macOS/Linux: `shasum -a 256 archive.zip`
+   - `openssl ts -verify -digest <hash> -in proof.tsr -CAfile digicert-root-g4.pem`
+   - `ots verify proof.ots`
+   - or the QR code to ProofMark.
+8. **Warnings:** keep the original ZIP without modifying or recompressing it, keep the PDF and the upgraded `.ots`, limits of the proof.
+9. **Footer:** "Document sealed with RFC 3161 timestamp — verifiable in Adobe Acrobat", page number, app URL. The QR code sits in the corner of the first page.
 
-## 8. Certificato JSON
+## 8. JSON certificate
 
 ```json
 {
   "schema": "proofmark/v1",
   "id": "PM-…",
   "createdAt": "2026-10-17T16:20:58Z",
-  "declared": { "author": "…", "title": "…", "note": "dichiarati, non certificati" },
-  "file": { "name": "progetto.zip", "size": 123456, "sha256": "…" },
+  "declared": { "author": "…", "title": "…", "note": "declared, not certified" },
+  "file": { "name": "project.zip", "size": 123456, "sha256": "…" },
   "rfc3161": { "tsa": "…", "genTime": "…", "serial": "…", "policy": "…", "tokenBase64": "…" },
   "opentimestamps": { "status": "pending", "calendars": ["…"], "otsBase64": "…" },
   "app": { "version": "1.0.0", "url": "https://…" }
 }
 ```
 
-## 9. Esperienza utente
+## 9. User experience
 
-- **Navbar:** icona, nome "ProofMark", badge "Zero-Knowledge: i file vengono elaborati solo nel tuo browser", toggle del tema, voci "Certifica" / "Verifica" / link a GitHub.
-- **Certifica:** campi facoltativi Autore e Titolo dell'opera (con nota "dichiarati, non certificati"), poi DropZone con gli stati idle, hover, drag-over, file accettato e file rifiutato (non `.zip`). Sotto, uno stepper a 4 fasi in tempo reale: `1. Calcolo Hash → 2. Marca DigiCert → 3. Ancoraggio Bitcoin → 4. Certificato Generato`, con progressi ed errori recuperabili (es. "riprova la marca DigiCert").
-- **Completamento:** scheda con nome e dimensione dell'archivio, hash con copia rapida, data della marca, pulsanti di download (PDF, JSON, `.tsr`, `.ots`) e avviso ben visibile sulla conservazione dello ZIP.
-- **Verifica:** due slot e il risultato a checklist.
-- Palette ardesia/grafite con accenti verde smeraldo e blu. Dettagli visivi definiti in fase di implementazione con la skill frontend-design.
-- **Privacy:** nessuna analytics di terze parti e nessun font caricato da CDN esterni. Una CSP restrittiva in `_headers` limita `connect-src` all'API interna, ai calendar OpenTimestamps e a Blockstream.
+- **Navbar:** icon, name "ProofMark", badge "Zero-Knowledge: files are processed only in your browser", theme toggle, "Certify" / "Verify" items / link to GitHub.
+- **Certify:** optional Author and Title of the work fields (with the note "declared, not certified"), then a DropZone with the idle, hover, drag-over, file accepted and file rejected (not `.zip`) states. Below, a real-time 4-stage stepper: `1. Hash computation → 2. DigiCert timestamp → 3. Bitcoin anchoring → 4. Certificate generated`, with progress and recoverable errors (e.g. "retry the DigiCert timestamp").
+- **Completion:** card with the archive's name and size, hash with quick copy, timestamp date, download buttons (PDF, JSON, `.tsr`, `.ots`) and a clearly visible warning about keeping the ZIP.
+- **Verify:** two slots and the checklist result.
+- Slate/graphite palette with emerald green and blue accents. Visual details defined during implementation with the frontend-design skill.
+- **Privacy:** no third-party analytics and no fonts loaded from external CDNs. A restrictive CSP in `_headers` limits `connect-src` to the internal API, the OpenTimestamps calendars and Blockstream.
 
-## 10. Repository e pubblicazione
+## 10. Repository and publishing
 
-- Struttura Vite standard + `functions/` (Cloudflare Pages Functions) + `public/icon.svg`, `public/favicon.ico`.
-- Pubblicazione: **integrazione Git nativa di Cloudflare Pages** collegata al repository GitHub, con build `npm run build` e output `dist`. Ogni push su `main` va in produzione e ogni PR ottiene un'anteprima. *Scelta del builder:* più semplice di una GitHub Action con wrangler. Una GitHub Action esegue comunque lint, typecheck e test sulle PR.
-- README con badge (build, licenza, deploy), diagramma dell'architettura, sviluppo locale (`npm run dev` + `wrangler pages dev` per la funzione) e link alla demo.
-- Licenza: **MIT**, open source, così chiunque può verificare che il file non venga inviato. *Scelta del builder.*
+- Standard Vite structure + `functions/` (Cloudflare Pages Functions) + `public/icon.svg`, `public/favicon.ico`.
+- Publishing: **Cloudflare Pages' native Git integration** linked to the GitHub repository, with build `npm run build` and output `dist`. Every push to `main` goes to production and every PR gets a preview. *Builder's choice:* simpler than a GitHub Action with wrangler. A GitHub Action still runs lint, typecheck and tests on PRs.
+- README with badges (build, license, deploy), architecture diagram, local development (`npm run dev` + `wrangler pages dev` for the function) and a link to the demo.
+- License: **MIT**, open source, so anyone can verify that the file is not sent. *Builder's choice.*
 
-## 11. Comportamento in caso di errore (scelte del builder)
+## 11. Error behavior (builder's choices)
 
-- **La prima marca DigiCert (sullo ZIP) è obbligatoria.** Se fallisce, il flusso si ferma con il pulsante "Riprova" e non viene generato alcun certificato.
-- **OpenTimestamps è facoltativo.** Se i calendar non rispondono, il certificato viene generato con la sola marca DigiCert, la sezione Bitcoin riporta "non disponibile" e si può ancorare in seguito dalla Verifica.
-- **La seconda marca (PAdES sul PDF) è facoltativa.** Se fallisce, il PDF viene prodotto senza sigillo, con un avviso, e si può rigenerare.
-- **Dominio:** `proofmark.pages.dev`, gratuito.
+- **The first DigiCert timestamp (on the ZIP) is mandatory.** If it fails, the flow stops with a "Retry" button and no certificate is generated.
+- **OpenTimestamps is optional.** If the calendars do not respond, the certificate is generated with the DigiCert timestamp only, the Bitcoin section reports "not available" and anchoring can be done later from Verify.
+- **The second timestamp (PAdES on the PDF) is optional.** If it fails, the PDF is produced without a seal, with a warning, and can be regenerated.
+- **Domain:** `proofmark.pages.dev`, free.
 
-## 12. Lasciato al builder
+## 12. Left to the builder
 
-- Nome definitivo: "ProofMark" è una proposta. Prima del lancio va controllato su EUIPO/TMview e sul dominio `*.pages.dev`.
-- Disegno dell'icona (scudo + orologio + nodo hash), tipografia, micro-interazioni.
-- Gestione degli errori di rete e dei timeout di DigiCert e OpenTimestamps.
-- Strategia di test: unit test su costruzione/parsing di ASN.1, hashing e verifica (con un token reale salvato come fixture); test end-to-end della generazione PDF.
+- Final name: "ProofMark" is a proposal. Before launch it must be checked on EUIPO/TMview and on the `*.pages.dev` domain.
+- Icon design (shield + clock + hash node), typography, micro-interactions.
+- Handling of network errors and DigiCert and OpenTimestamps timeouts.
+- Test strategy: unit tests on ASN.1 construction/parsing, hashing and verification (with a real token saved as a fixture); end-to-end test of PDF generation.
 
 ---
 
-## 13. Revisione del 2026-10-18: solo Bitcoin, pubblicazione su GitHub Pages
+## 13. Revision of 2026-10-18: Bitcoin only, publishing on GitHub Pages
 
-Decisa con l'utente. Questa sezione **sostituisce** le parti del documento che parlano di DigiCert, di Cloudflare Pages e del sigillo PAdES.
+Decided with the user. This section **replaces** the parts of the document that talk about DigiCert, Cloudflare Pages and the PAdES seal.
 
-- **Niente più marca DigiCert RFC 3161.** L'utente ha dubbi sul suo valore. Si eliminano la Pages Function `/api/tsa`, il client e la verifica RFC 3161, il certificato radice DigiCert e il sigillo PAdES del PDF. L'unica prova di data è l'ancoraggio Bitcoin tramite OpenTimestamps, che diventa **obbligatorio**: se nessun calendario risponde, la certificazione si ferma con "Riprova".
-- **Due documenti distinti.**
-  1. **Ricevuta di registrazione**, emessa subito. Contiene l'impronta e l'ora della richiesta presa dall'orologio del dispositivo (dichiarata, non certificata). Lo stato è "in attesa di conferma Bitcoin", con il promemoria per tornare tra qualche ora. **Non attesta alcuna data.**
-  2. **Attestato di Esistenza Digitale**, emesso dalla pagina Verifica dopo la conferma: "Esistenza attestata al blocco Bitcoin #N del <data del blocco>". Il numero e la data del blocco provengono solo dalla verifica in rete della prova (Esplora), mai dal JSON caricato. L'attestato ha lo stesso ID della ricevuta.
-- **Precisione.** La data è quella del blocco, con una tolleranza di circa due ore. Il PDF lo dichiara.
-- **PDF non firmato.** La prova crittografica è il file `prova.ots` allegato, verificabile da chiunque con OpenTimestamps.
-- **Pubblicazione.** GitHub Pages su `https://jpaladins.github.io/proofmark/` (base `/proofmark/`), tramite la GitHub Action `deploy.yml`. Nessun dominio personalizzato.
-  - Il percorso `/verifica` usa una copia di `index.html` in `verifica/index.html` e come `404.html`.
-  - La CSP sta in un `<meta>`, perché GitHub Pages non supporta header personalizzati.
-- **Stepper a 3 fasi:** `1. Calcolo Hash → 2. Ancoraggio Bitcoin → 3. Ricevuta Generata`.
+- **No more DigiCert RFC 3161 timestamp.** The user has doubts about its value. The Pages Function `/api/tsa`, the RFC 3161 client and verification, the DigiCert root certificate and the PDF's PAdES seal are removed. The only proof of date is the Bitcoin anchoring through OpenTimestamps, which becomes **mandatory**: if no calendar responds, certification stops with "Retry".
+- **Two distinct documents.**
+  1. **Registration receipt**, issued immediately. It contains the fingerprint and the request time taken from the device clock (declared, not certified). The status is "pending Bitcoin confirmation", with the reminder to come back in a few hours. **It does not attest to any date.**
+  2. **Digital Existence Attestation**, issued by the Verify page after confirmation: "Existence attested at Bitcoin block #N of <block date>". The block number and date come only from the online verification of the proof (Esplora), never from the uploaded JSON. The attestation has the same ID as the receipt.
+- **Precision.** The date is that of the block, with a tolerance of about two hours. The PDF states this.
+- **Unsigned PDF.** The cryptographic proof is the attached `proof.ots` file, verifiable by anyone with OpenTimestamps.
+- **Publishing.** GitHub Pages at `https://jpaladins.github.io/proofmark/` (base `/proofmark/`), through the GitHub Action `deploy.yml`. No custom domain.
+  - The `/verifica` path uses a copy of `index.html` at `verifica/index.html` and as `404.html`.
+  - The CSP lives in a `<meta>` tag, because GitHub Pages does not support custom headers.
+- **3-stage stepper:** `1. Hash computation → 2. Bitcoin anchoring → 3. Receipt generated`.

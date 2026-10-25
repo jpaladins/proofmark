@@ -1,41 +1,41 @@
-# Pubblicare ProofMark su GitHub Pages
+# Publishing ProofMark on GitHub Pages
 
-ProofMark è un sito statico. Lo pubblica la GitHub Action `.github/workflows/deploy.yml` a ogni push su `main`, all'indirizzo `https://jpaladins.github.io/proofmark/`. Non servono server, account esterni o costi.
+ProofMark is a static site. The GitHub Action `.github/workflows/deploy.yml` publishes it on every push to `main`, at `https://jpaladins.github.io/proofmark/`. No servers, external accounts or costs are needed.
 
-## 1. Attiva GitHub Pages (una volta)
+## 1. Enable GitHub Pages (once)
 
 Repository `jpaladins/proofmark` → **Settings** → **Pages** → **Build and deployment** → **Source: GitHub Actions**.
 
-In alternativa, con la [GitHub CLI](https://cli.github.com/):
+Alternatively, with the [GitHub CLI](https://cli.github.com/):
 
 ```bash
 gh api -X POST repos/jpaladins/proofmark/pages -f build_type=workflow
 ```
 
-## 2. Pubblica
+## 2. Publish
 
-Ogni push su `main` esegue test e build e pubblica `dist/`. L'avanzamento è visibile nella scheda **Actions** → *Deploy to GitHub Pages*, oppure si può lanciare a mano con **Run workflow**.
+Every push to `main` runs the tests and the build and publishes `dist/`. Progress is visible in the **Actions** tab → *Deploy to GitHub Pages*, or you can start it by hand with **Run workflow**.
 
-Il workflow `.github/workflows/ci.yml` esegue typecheck, lint, test e build su ogni pull request.
+The `.github/workflows/ci.yml` workflow runs typecheck, lint, tests and build on every pull request.
 
-## Come funziona sotto il cofano
+## How it works under the hood
 
-- **Percorso del sito.** È un *project site*, quindi tutto vive sotto `/proofmark/` (`base` in `vite.config.ts`). L'indirizzo pubblico usato nei PDF, nel QR code e nei promemoria è definito in `src/core/app.ts`.
-- **Pagina `/verifica`.** GitHub Pages serve solo file reali. La build copia `index.html` in `verifica/index.html`, così il link del QR code apre direttamente la verifica, e in `404.html` per qualsiasi altro percorso.
-- **Sicurezza.** GitHub Pages non permette header personalizzati.
-  - La Content-Security-Policy (`src/csp.ts`) viene inserita come `<meta>` nella build.
-  - HTTPS e HSTS sono già garantiti da `github.io`.
-  - Il sito si collega solo ai calendari OpenTimestamps e a `blockstream.info`.
-- **Nessun server.** Non c'è più alcun inoltro lato server: i calendari OpenTimestamps e Blockstream accettano chiamate dirette dal browser.
+- **Site path.** It is a *project site*, so everything lives under `/proofmark/` (`base` in `vite.config.ts`). The public address used in the PDFs, the QR code and the reminders is defined in `src/core/app.ts`.
+- **The `/verifica` page.** GitHub Pages only serves real files. The build copies `index.html` to `verifica/index.html`, so the QR code link opens verification directly, and to `404.html` for any other path.
+- **Security.** GitHub Pages does not allow custom headers.
+  - The Content-Security-Policy (`src/csp.ts`) is inserted as a `<meta>` tag in the build.
+  - HTTPS and HSTS are already guaranteed by `github.io`.
+  - The site only connects to the OpenTimestamps calendars and to `blockstream.info`.
+- **No server.** There is no server-side forwarding any more: the OpenTimestamps calendars and Blockstream accept direct calls from the browser.
 
-## Se cambi nome al repository
+## If you rename the repository
 
-Aggiorna `BASE` in `vite.config.ts`, `APP_URL` in `src/core/app.ts` e i link nel `README.md`.
+Update `BASE` in `vite.config.ts`, `APP_URL` in `src/core/app.ts` and the links in `README.md`.
 
-> Le ricevute e gli attestati già emessi riportano l'indirizzo stampato e nel QR code. Finché sono in circolazione, mantieni il sito raggiungibile a quell'indirizzo.
+> Receipts and attestations already issued carry the address printed on them and in the QR code. As long as they are in circulation, keep the site reachable at that address.
 
-## Controllo finale
+## Final check
 
-1. Apri `https://jpaladins.github.io/proofmark/`, certifica un piccolo `.zip` e scarica la ricevuta.
-2. Dopo qualche ora apri **Verifica**, carica lo `.zip` e la ricevuta, controlla la conferma Bitcoin e scarica l'attestato.
-3. Scansiona il QR code dell'attestato con il telefono: deve aprirsi la pagina Verifica con l'impronta già compilata.
+1. Open `https://jpaladins.github.io/proofmark/`, certify a small `.zip` and download the receipt.
+2. After a few hours open **Verify**, upload the `.zip` and the receipt, check the Bitcoin confirmation and download the attestation.
+3. Scan the attestation's QR code with your phone: the Verify page must open with the fingerprint already filled in.

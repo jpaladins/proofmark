@@ -8,7 +8,7 @@
 
 **Tech Stack:** Vite, React, TypeScript (strict), Tailwind CSS v4 (`@tailwindcss/vite`), lucide-react, hash-wasm, asn1js + pkijs, opentimestamps, pdf-lib + @pdf-lib/fontkit, qrcode, Vitest + @testing-library/react + jsdom, Cloudflare Pages Functions (wrangler for local dev). Use the latest stable versions at install time.
 
-**Spec:** `docs/superpowers/specs/2026-10-17-proofmark-design.md`. The visual reference for the PDF is `docs/mockups/attestato-preview.html`.
+**Spec:** `docs/superpowers/specs/2026-10-17-proofmark-design.md`. The visual reference for the PDF was an HTML mockup (mockup removed).
 
 ## Global Constraints
 
@@ -46,7 +46,7 @@
 - [ ] **Step 1:** `git init -b main` in the project root, then scaffold with `npm create vite@latest . -- --template react-ts` (keep `docs/`). Add Tailwind v4 via `@tailwindcss/vite` and Vitest with `environment: 'jsdom'` and `setupFiles: ['src/test/setup.ts']` (`@testing-library/jest-dom`).
 - [ ] **Step 2: Write the failing test** in `src/App.test.tsx`: `render(<App />)` and expect `screen.getByText('ProofMark')` in the document.
 - [ ] **Step 3:** Run `npm test -- --run`. Expected: FAIL (the Vite template does not render "ProofMark").
-- [ ] **Step 4:** Replace `App.tsx` with a minimal shell that renders "ProofMark". Create `public/icon.svg` from the shield + clock + three hash nodes in the mockup header (64×64 viewBox, emerald→blue gradient). Write `scripts/make-favicon.mjs` (devDeps `sharp`, `png-to-ico`) that renders the SVG to 16/32/48 px and writes `public/favicon.ico`, then run it once and commit the output. Link both in `index.html`, along with `<html lang="it">`, the title "ProofMark — Prova di esistenza digitale" and a meta description.
+- [ ] **Step 4:** Replace `App.tsx` with a minimal shell that renders "ProofMark". Create `public/icon.svg` from the shield + clock + three hash nodes in the mockup header (mockup removed) (64×64 viewBox, emerald→blue gradient). Write `scripts/make-favicon.mjs` (devDeps `sharp`, `png-to-ico`) that renders the SVG to 16/32/48 px and writes `public/favicon.ico`, then run it once and commit the output. Link both in `index.html`, along with `<html lang="it">`, the title "ProofMark — Prova di esistenza digitale" and a meta description.
 - [ ] **Step 5:** Write `public/_headers` with `/*` → `Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://a.pool.opentimestamps.org https://b.pool.opentimestamps.org https://a.pool.eternitywall.com https://ots.btc.catallaxy.com https://blockstream.info; frame-ancestors 'none'`, plus `Referrer-Policy: no-referrer` and `X-Content-Type-Options: nosniff`.
 - [ ] **Step 6:** Write `.github/workflows/ci.yml`: on push/PR to `main`, Node LTS, `npm ci`, `npm run typecheck`, `npm run lint`, `npm test -- --run`, `npm run build`. Deployment itself is done by Cloudflare Pages' Git integration, not by this workflow.
 - [ ] **Step 7:** Run `npm test -- --run && npm run build`. Expected: PASS, and `dist/` contains `icon.svg`, `favicon.ico` and `_headers`.
@@ -252,8 +252,8 @@
   - **Review Focus 5:** author `'Zoë Łukasz 😀 山田'` renders without throwing;
   - `copy.ts` contains neither "marca temporale qualificata" nor "data certa ai sensi di legge" (string scan).
 - [ ] **Step 2:** Run them. Expected: FAIL.
-- [ ] **Step 3:** Implement, reproducing `docs/mockups/attestato-preview.html` section by section: header with logo (draw the icon as vector paths), ID and issue date (Europe/Rome via `Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Rome' })`); title; green existence box + QR (`qrcode.toDataURL`, error correction M, embedded PNG); 1 Dati dichiarati (only if present); 2 Oggetto, with the hash in 8-char groups in Plex Mono; 3 RFC 3161 and 4 Bitcoin side by side, with the amber reminder box when pending; 5 Dichiarazione; page 2: 6 Come verificare (the commands from the mockup, with the real file name and hash), 7 Avvertenze (pending reminder first when pending), 8 Natura e limiti; footer on both pages. Take all copy from the mockup, put it in `copy.ts`, and use status "Stato all'emissione" for revision 1. Sanitise text with `font.hasGlyph`-style filtering (use `fontkit`'s `font.glyphForCodePoint(cp).id === 0` → `?`).
-- [ ] **Step 4:** Run the tests. Expected: PASS. Then write a dev-only script `scripts/render-sample.ts` (run with `npx tsx`) that saves `out/sample.pdf`, open it in the browser pane and compare it with the mockup by eye.
+- [ ] **Step 3:** Implement, reproducing the visual mockup (mockup removed) section by section: header with logo (draw the icon as vector paths), ID and issue date (Europe/Rome via `Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Rome' })`); title; green existence box + QR (`qrcode.toDataURL`, error correction M, embedded PNG); 1 Dati dichiarati (only if present); 2 Oggetto, with the hash in 8-char groups in Plex Mono; 3 RFC 3161 and 4 Bitcoin side by side, with the amber reminder box when pending; 5 Dichiarazione; page 2: 6 Come verificare (the commands from the mockup (mockup removed), with the real file name and hash), 7 Avvertenze (pending reminder first when pending), 8 Natura e limiti; footer on both pages. Take all copy from the mockup (mockup removed), put it in `copy.ts`, and use status "Stato all'emissione" for revision 1. Sanitise text with `font.hasGlyph`-style filtering (use `fontkit`'s `font.glyphForCodePoint(cp).id === 0` → `?`).
+- [ ] **Step 4:** Run the tests. Expected: PASS. Then write a dev-only script `scripts/render-sample.ts` (run with `npx tsx`) that saves `out/sample.pdf`, open it in the browser pane and compare it with the mockup (mockup removed) by eye.
 - [ ] **Step 5: Commit** `feat(pdf): attestation renderer with embedded proofs`.
 
 ### Task 9: PAdES document timestamp (seal) and seal verification
@@ -320,7 +320,7 @@
 
 ### Task 11: Design system, layout, header and routing
 
-Invoke `frontend-design:frontend-design` first. The aesthetic is enterprise/fintech (Vercel/Stripe/Proton), consistent with the mockup.
+Invoke `frontend-design:frontend-design` first. The aesthetic is enterprise/fintech (Vercel/Stripe/Proton), consistent with the mockup (mockup removed).
 
 **Files:**
 - Create: `src/ui/theme.ts` (light/dark tokens as CSS variables in `src/index.css` via Tailwind v4 `@theme`), `src/ui/useTheme.ts`, `src/ui/router.ts`, `src/ui/components/{Header,Button,Card,Badge,Alert,ThemeToggle,Logo}.tsx`, `src/ui/pages/{CertifyPage,VerifyPage}.tsx` (stubs), `src/ui/Layout.tsx`
