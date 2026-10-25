@@ -4,7 +4,7 @@ import { DECLARED_MAX } from '@/core/cert/certificate'
 import { formatBytes } from '@/i18n'
 import type { CertifyDeps } from '@/flow/certify'
 import { defaultCertifyDeps, useCertify } from '@/flow/useCertify'
-import { useLang } from '../LangContext'
+import { useLang, useT } from '../LangContext'
 import { CertificateCard } from '../components/CertificateCard'
 import { DropZone } from '../components/DropZone'
 import { HashProgress } from '../components/HashProgress'
@@ -13,11 +13,12 @@ import { Stepper } from '../components/Stepper'
 
 function Field({ label, value, onChange, disabled }: { label: string; value: string; onChange: (v: string) => void; disabled?: boolean }) {
   const id = useId()
+  const t = useT().certify
   return (
     <div>
       <div className="flex items-baseline justify-between">
         <label htmlFor={id} className="text-sm font-medium text-ink">
-          {label} <span className="font-normal text-muted">(facoltativo)</span>
+          {label} <span className="font-normal text-muted">{t.optional}</span>
         </label>
         <span className="text-xs tabular-nums text-muted" aria-hidden>
           {value.length}/{DECLARED_MAX}
@@ -37,6 +38,7 @@ function Field({ label, value, onChange, disabled }: { label: string; value: str
 
 export function CertifyPage({ deps = defaultCertifyDeps }: { deps?: CertifyDeps }) {
   const lang = useLang()
+  const t = useT().certify
   const { steps, result, error, running, start, retry, reset } = useCertify(deps)
   const [author, setAuthor] = useState('')
   const [title, setTitle] = useState('')
@@ -60,26 +62,22 @@ export function CertifyPage({ deps = defaultCertifyDeps }: { deps?: CertifyDeps 
 
   return (
     <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-16">
-      <section aria-labelledby="certifica-title">
-        <h1 id="certifica-title" className="max-w-[18ch] font-serif text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">
-          Dimostra che il tuo lavoro esisteva oggi
+      <section aria-labelledby="certify-title">
+        <h1 id="certify-title" className="max-w-[18ch] font-serif text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">
+          {t.title}
         </h1>
-        <p className="mt-5 max-w-[60ch] text-lg leading-relaxed text-ink-2">
-          Raccogli il progetto in un archivio .zip e trascinalo qui. Il browser ne calcola l'impronta e la registra sulla
-          blockchain Bitcoin. Ricevi subito una ricevuta e, dopo qualche ora, un attestato con la data certificata dalla
-          blockchain, verificabile da chiunque.
-        </p>
+        <p className="mt-5 max-w-[60ch] text-lg leading-relaxed text-ink-2">{t.intro}</p>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
-          <Field label="Autore" value={author} onChange={setAuthor} disabled={running} />
-          <Field label="Titolo dell'opera" value={title} onChange={setTitle} disabled={running} />
+          <Field label={t.author} value={author} onChange={setAuthor} disabled={running} />
+          <Field label={t.workTitle} value={title} onChange={setTitle} disabled={running} />
         </div>
-        <p className="mt-2 text-sm text-muted">Compaiono nell'attestato come dati dichiarati da te, non certificati.</p>
+        <p className="mt-2 text-sm text-muted">{t.declaredNote}</p>
 
         <div className="mt-6">
           {selected ? (
             <section
-              aria-label="Archivio selezionato"
+              aria-label={t.selected}
               className="rounded-xl border border-line-strong bg-surface p-5 sm:p-6 [animation:pm-reveal_.3s_ease-out_both]"
             >
               <div className="flex items-start gap-4">
@@ -88,24 +86,21 @@ export function CertifyPage({ deps = defaultCertifyDeps }: { deps?: CertifyDeps 
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="break-all font-medium text-ink">{selected.name}</p>
-                  <p className="mt-0.5 text-sm text-muted">{formatBytes(selected.size, 'it')}</p>
+                  <p className="mt-0.5 text-sm text-muted">{formatBytes(selected.size, lang)}</p>
                 </div>
                 {!started && (
                   <Button variant="ghost" onClick={() => setSelected(undefined)} className="-mr-2 -mt-1 shrink-0 px-2.5">
                     <X aria-hidden className="size-4" />
-                    Cambia archivio
+                    {t.change}
                   </Button>
                 )}
               </div>
               {!started && (
                 <div className="mt-5 border-t border-line pt-5">
-                  <p className="max-w-[60ch] text-sm leading-relaxed text-ink-2">
-                    Controlla l'archivio e i dati dichiarati, poi conferma. La registrazione sulla blockchain Bitcoin non si
-                    può annullare: per modificare qualcosa dopo, dovrai certificare di nuovo.
-                  </p>
+                  <p className="max-w-[60ch] text-sm leading-relaxed text-ink-2">{t.confirmBody}</p>
                   <Button className="mt-4 w-full sm:w-auto" onClick={() => start(selected, { author, title }, lang)}>
                     <ShieldCheck aria-hidden className="size-4" />
-                    Certifica archivio
+                    {t.confirm}
                   </Button>
                 </div>
               )}
@@ -120,7 +115,7 @@ export function CertifyPage({ deps = defaultCertifyDeps }: { deps?: CertifyDeps 
             <Stepper steps={steps} />
             {hashing && <HashProgress progress={steps.hash.hashProgress} />}
             {error && (
-              <Alert tone="danger" title="La certificazione si è fermata" action={<Button onClick={retry}>Riprova</Button>}>
+              <Alert tone="danger" title={t.stopped} action={<Button onClick={retry}>{t.retry}</Button>}>
                 {error}
               </Alert>
             )}
@@ -129,16 +124,11 @@ export function CertifyPage({ deps = defaultCertifyDeps }: { deps?: CertifyDeps 
       </section>
 
       <aside className="h-fit border-l-2 border-emerald pl-5 text-sm leading-relaxed text-ink-2 lg:mt-3">
-        <h2 className="font-semibold text-ink">Cosa lascia il tuo computer</h2>
-        <p className="mt-2">
-          Solo l'impronta SHA-256 dell'archivio: 64 caratteri da cui è impossibile ricostruire il contenuto.
-        </p>
+        <h2 className="font-semibold text-ink">{t.leavesTitle}</h2>
+        <p className="mt-2">{t.leaves}</p>
         <p className="mt-3 break-all font-mono text-xs text-muted">9f2c41a7e03b5d18c6a0f2e471b9d3c508e6a4f2d1c7b0935e2a8f61c4d07b3e</p>
-        <h2 className="mt-6 font-semibold text-ink">Cosa ricevi</h2>
-        <p className="mt-2">
-          Subito una ricevuta PDF con la prova OpenTimestamps. Dopo la conferma Bitcoin, di solito entro qualche ora,
-          l'attestato con la data del blocco. Le prove si verificano con OpenTimestamps anche senza ProofMark.
-        </p>
+        <h2 className="mt-6 font-semibold text-ink">{t.getsTitle}</h2>
+        <p className="mt-2">{t.gets}</p>
       </aside>
     </div>
   )

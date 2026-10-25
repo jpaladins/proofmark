@@ -1,31 +1,28 @@
 import { FileArchive, UploadCloud, XCircle } from 'lucide-react'
 import { useId, useRef, useState, type DragEvent } from 'react'
 import { validateZip } from '@/core/zip/isZip'
+import type { Messages } from '@/i18n'
 import { cx } from '../cx'
-
-const REASON_COPY = {
-  extension: 'Carica un file .zip',
-  signature: 'Il file non è un archivio ZIP valido',
-  empty: "L'archivio è vuoto",
-} as const
+import { useRich } from '../i18n'
+import { useT } from '../LangContext'
 
 type State = 'idle' | 'over' | 'rejected' | 'accepted'
 
 /** Default validation: a real ZIP archive. Returns an error message or undefined. */
-async function zipError(file: File): Promise<string | undefined> {
+async function zipError(file: File, reasons: Messages['dropZone']['reasons']): Promise<string | undefined> {
   const v = await validateZip(file)
-  return v.ok ? undefined : REASON_COPY[v.reason]
+  return v.ok ? undefined : reasons[v.reason]
 }
 
 export function DropZone({
   onFile,
   disabled,
-  label = "Trascina qui l'archivio .zip",
+  label,
   compact,
-  validate = zipError,
-  inputLabel = 'Seleziona archivio .zip',
+  validate,
+  inputLabel,
   accept = '.zip,application/zip,application/x-zip-compressed',
-  multipleMessage = 'Carica un solo archivio .zip',
+  multipleMessage,
 }: {
   onFile: (file: File) => void
   disabled?: boolean
@@ -37,6 +34,8 @@ export function DropZone({
   multipleMessage?: string
 }) {
   const id = useId()
+  const t = useT().dropZone
+  const rich = useRich().dropZone
   const inputRef = useRef<HTMLInputElement>(null)
   const [state, setState] = useState<State>('idle')
   const [message, setMessage] = useState<string>()
@@ -46,11 +45,11 @@ export function DropZone({
     if (!files || files.length === 0 || disabled) return
     if (files.length > 1) {
       setState('rejected')
-      setMessage(multipleMessage)
+      setMessage(multipleMessage ?? t.multiple)
       return
     }
     const file = files[0]
-    const problem = await validate(file)
+    const problem = await (validate ? validate(file) : zipError(file, t.reasons))
     if (problem) {
       setState('rejected')
       setMessage(problem)
@@ -94,7 +93,7 @@ export function DropZone({
         id={id}
         type="file"
         accept={accept}
-        aria-label={inputLabel}
+        aria-label={inputLabel ?? t.inputLabel}
         className="sr-only"
         disabled={disabled}
         onChange={(e) => {
@@ -120,17 +119,18 @@ export function DropZone({
         </span>
         <div className="min-w-0">
           <p className={cx('font-medium text-ink', compact ? 'text-sm' : 'text-lg')}>
-            {state === 'over' ? "Rilascia l'archivio" : accepted ? accepted.name : label}
+            {state === 'over' ? t.release : accepted ? accepted.name : (label ?? t.label)}
           </p>
           <p className="mt-1 text-sm text-muted">
-            oppure{' '}
-            <label
-              htmlFor={id}
-              className="cursor-pointer font-medium text-blue underline underline-offset-4 hover:text-ink"
-            >
-              scegli un file
-            </label>
-            {!compact && ', di qualsiasi dimensione'}
+            {rich.orChoose(
+              <label
+                htmlFor={id}
+                className="cursor-pointer font-medium text-blue underline underline-offset-4 hover:text-ink"
+              >
+                {t.choose}
+              </label>,
+              !compact,
+            )}
           </p>
         </div>
       </div>

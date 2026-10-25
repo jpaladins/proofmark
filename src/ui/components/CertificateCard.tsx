@@ -1,41 +1,43 @@
 import { CalendarPlus, Download, FileJson, FileText, RotateCcw } from 'lucide-react'
 import { useLayoutEffect, useRef } from 'react'
 import { verifyDisplayFor } from '@/core/app'
-import { formatBytes, messages } from '@/i18n'
+import { formatBytes, localeOf, type Lang } from '@/i18n'
 import type { CertifyResult } from '@/flow/certify'
 import { utcOffset } from '@/core/time'
-import { useLang } from '../LangContext'
+import { useLang, useT } from '../LangContext'
 import { buildReminderIcs } from '../ics'
 import { downloadBytes } from '../download'
 import { proofFileNames } from '@/core/cert/fileNames'
 import { Alert, Badge, Button } from './primitives'
 import { CopyButton, Fingerprint } from './Fingerprint'
 
-const fmtDateTime = (iso: string) =>
-  `${new Intl.DateTimeFormat('it-IT', { dateStyle: 'long', timeStyle: 'medium' }).format(new Date(iso))} ${utcOffset(new Date(iso))}`
-const fmtTime = (d: Date) => new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' }).format(d)
+const fmtDateTime = (iso: string, lang: Lang) =>
+  `${new Intl.DateTimeFormat(localeOf(lang), { dateStyle: 'long', timeStyle: 'medium' }).format(new Date(iso))} ${utcOffset(new Date(iso))}`
+const fmtTime = (d: Date, lang: Lang) =>
+  new Intl.DateTimeFormat(localeOf(lang), { hour: '2-digit', minute: '2-digit' }).format(d)
 
 export function PendingBanner({ at, certId, fileName }: { at: Date; certId: string; fileName: string }) {
   const lang = useLang()
+  const m = useT()
+  const t = m.result
   return (
     <Alert
       tone="info"
-      label="Conferma Bitcoin in arrivo"
-      title={`Per l'attestato con la data torna dopo le ${fmtTime(at)} circa`}
+      label={t.bannerLabel}
+      title={t.bannerTitle(fmtTime(at, lang))}
       action={
         <Button
           variant="secondary"
           onClick={() =>
-            downloadBytes(buildReminderIcs({ at, certId, fileName, lang }), `${certId}-promemoria.ics`, 'text/calendar')
+            downloadBytes(buildReminderIcs({ at, certId, fileName, lang }), `${certId}-${t.icsSuffix}.ics`, 'text/calendar')
           }
         >
           <CalendarPlus aria-hidden className="size-4" />
-          Aggiungi promemoria al calendario
+          {t.addReminder}
         </Button>
       }
     >
-      {/* Italian until the result page follows the page language. */}
-      {messages('it').pdf.pendingReminder(verifyDisplayFor('it'))}
+      {m.pdf.pendingReminder(verifyDisplayFor(lang))}
     </Alert>
   )
 }
@@ -52,6 +54,8 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
 /** Result of a certification run: the receipt. The attestation comes later, from the Verify page. */
 export function CertificateCard({ result, onReset }: { result: CertifyResult; onReset: () => void }) {
   const { certificate: c } = result
+  const lang = useLang()
+  const t = useT().result
   const names = proofFileNames(c)
   const headingRef = useRef<HTMLHeadingElement>(null)
 
@@ -63,40 +67,37 @@ export function CertificateCard({ result, onReset }: { result: CertifyResult; on
   }, [])
   const downloads = [
     {
-      label: 'Scarica ricevuta PDF',
+      label: t.downloadPdf,
       icon: FileText,
       primary: true,
       run: () => downloadBytes(result.pdf, names.pdf, 'application/pdf'),
     },
     {
-      label: 'Scarica ricevuta JSON',
+      label: t.downloadJson,
       icon: FileJson,
       run: () => downloadBytes(result.json, names.json, 'application/json'),
     },
     {
-      label: 'Scarica prova Bitcoin (.ots)',
+      label: t.downloadOts,
       icon: Download,
       run: () => downloadBytes(result.ots, names.ots, 'application/vnd.opentimestamps.v1'),
     },
   ]
 
   return (
-    <section aria-label="Ricevuta generata" className="[animation:pm-reveal_.45s_ease-out_both]">
+    <section aria-label={t.region} className="[animation:pm-reveal_.45s_ease-out_both]">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2 ref={headingRef} tabIndex={-1} className="font-serif text-2xl font-semibold tracking-tight focus:outline-none">
-          Registrazione inviata alla blockchain
+          {t.heading}
         </h2>
         <p className="font-mono text-sm text-muted">{c.id}</p>
       </div>
-      <p className="mt-3 max-w-[62ch] text-ink-2">
-        Hai la ricevuta. La data di esistenza verrà dal blocco Bitcoin che conterrà la prova, di solito entro qualche ora:
-        a quel punto potrai scaricare l'attestato dalla pagina Verifica.
-      </p>
+      <p className="mt-3 max-w-[62ch] text-ink-2">{t.intro}</p>
 
       <div className="mt-6 rounded-xl border border-line bg-surface p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-medium text-ink-2">Impronta SHA-256 di {c.file.name}</p>
-          <CopyButton value={c.file.sha256} label="Copia l'impronta" />
+          <p className="text-sm font-medium text-ink-2">{t.fingerprintOf(c.file.name)}</p>
+          <CopyButton value={c.file.sha256} label={t.copyFingerprint} />
         </div>
         <div className="mt-3">
           <Fingerprint hash={c.file.sha256} />
@@ -105,18 +106,18 @@ export function CertificateCard({ result, onReset }: { result: CertifyResult; on
 
       <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_20rem]">
         <dl>
-          <Fact label="Archivio">
-            {c.file.name} <span className="text-muted">({formatBytes(c.file.size, 'it')})</span>
+          <Fact label={t.archive}>
+            {c.file.name} <span className="text-muted">({formatBytes(c.file.size, lang)})</span>
           </Fact>
-          {c.declared?.author && <Fact label="Autore (dichiarato)">{c.declared.author}</Fact>}
-          {c.declared?.title && <Fact label="Titolo (dichiarato)">{c.declared.title}</Fact>}
-          <Fact label="Richiesta inviata">
-            {fmtDateTime(c.requestedAt)}
-            <span className="mt-0.5 block text-muted">Orologio del tuo dispositivo, non certificato</span>
+          {c.declared?.author && <Fact label={t.authorDeclared}>{c.declared.author}</Fact>}
+          {c.declared?.title && <Fact label={t.titleDeclared}>{c.declared.title}</Fact>}
+          <Fact label={t.requested}>
+            {fmtDateTime(c.requestedAt, lang)}
+            <span className="mt-0.5 block text-muted">{t.deviceClock}</span>
           </Fact>
-          <Fact label="Ancoraggio Bitcoin">
-            <Badge tone="warn">In attesa di conferma</Badge>
-            <span className="mt-1 block text-muted">{c.opentimestamps.calendars.length} calendari OpenTimestamps</span>
+          <Fact label={t.anchoring}>
+            <Badge tone="warn">{t.pending}</Badge>
+            <span className="mt-1 block text-muted">{t.calendars(c.opentimestamps.calendars.length)}</span>
           </Fact>
         </dl>
 
@@ -129,16 +130,15 @@ export function CertificateCard({ result, onReset }: { result: CertifyResult; on
           ))}
           <Button variant="ghost" onClick={onReset} className="mt-2 justify-start">
             <RotateCcw aria-hidden className="size-4" />
-            Certifica un altro archivio
+            {t.another}
           </Button>
         </div>
       </div>
 
       <div className="mt-8 grid gap-3">
         <PendingBanner at={result.reminderAfter} certId={c.id} fileName={c.file.name} />
-        <Alert tone="warning" title="Conserva l'archivio esattamente com'è.">
-          Se estrai i file e li ricomprimi, anche senza modificarli, l'impronta cambia e la prova non sarà più
-          riconducibile all'archivio. Tieni insieme lo .zip originale, la ricevuta e la prova .ots.
+        <Alert tone="warning" title={t.keepTitle}>
+          {t.keepBody}
         </Alert>
       </div>
     </section>

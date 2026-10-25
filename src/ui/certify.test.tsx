@@ -1,12 +1,16 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { PDFDocument } from 'pdf-lib'
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { PENDING_HASH, PENDING_OTS } from '@/test/certFixtures'
 import type { CertifyDeps } from '@/flow/certify'
 import { CertifyPage } from './pages/CertifyPage'
 import { Stepper } from './components/Stepper'
 import { buildReminderIcs } from './ics'
+
+// Italian pages: the copy asserted below is the Italian one.
+beforeEach(() => window.history.replaceState(null, '', '/proofmark/it/'))
+afterEach(() => window.history.replaceState(null, '', '/proofmark/it/'))
 
 const HASH = PENDING_HASH
 const PK = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3])

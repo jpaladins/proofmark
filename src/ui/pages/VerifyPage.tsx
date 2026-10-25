@@ -19,7 +19,7 @@ import { HashProgress } from '../components/HashProgress'
 import { Alert, Button } from '../components/primitives'
 import { downloadBytes } from '../download'
 import { proofFileNames } from '@/core/cert/fileNames'
-import { useLang } from '../LangContext'
+import { useLang, useT } from '../LangContext'
 import { useRoute } from '../router'
 
 export type VerifyPageDeps = {
@@ -44,8 +44,6 @@ const defaultDeps: VerifyPageDeps = {
   },
 }
 
-const EVIDENCE_FORMAT = "Carica la ricevuta o l'attestato di ProofMark (PDF o JSON)"
-
 function Slot({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
@@ -58,6 +56,7 @@ function Slot({ title, children }: { title: string; children: React.ReactNode })
 export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
   const { hashParams } = useRoute()
   const lang = useLang()
+  const t = useT().verify
   const fromQr = /^[0-9a-f]{64}$/.test(hashParams.get('sha256') ?? '') ? hashParams.get('sha256')! : undefined
   const [zip, setZip] = useState<File>()
   const [evidenceFile, setEvidenceFile] = useState<File>()
@@ -99,13 +98,8 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
       if (!evidenceFile && fromQr) {
         setChecks([
           sha256 === fromQr
-            ? { id: 'hash', status: 'ok', label: "L'impronta corrisponde a quella del QR code" }
-            : {
-                id: 'hash',
-                status: 'fail',
-                label: "L'impronta non corrisponde: l'archivio è diverso da quello certificato",
-                detail: `Archivio: ${sha256}\nQR code: ${fromQr}`,
-              },
+            ? { id: 'hash', status: 'ok', label: t.qrOk }
+            : { id: 'hash', status: 'fail', label: t.qrFail, detail: t.qrFailDetail(sha256, fromQr) },
         ])
         return
       }
@@ -113,7 +107,7 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
       setEvidence(ev)
       setChecks(await deps.verifyOffline(sha256, ev, lang))
     } catch (err) {
-      setError(err instanceof EvidenceError ? err.message : 'Verifica non riuscita. Controlla i file e riprova.')
+      setError(err instanceof EvidenceError ? err.message : t.failed)
     } finally {
       setBusy(undefined)
       setProgress(undefined)
@@ -140,7 +134,7 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
     try {
       setAttestato(await deps.buildAttestato(evidence, bitcoin.upgraded))
     } catch {
-      setAttestatoError("Impossibile generare l'attestato. Riprova.")
+      setAttestatoError(t.attestationError)
     } finally {
       setBusy(undefined)
     }
@@ -150,17 +144,17 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
   const downloads = attestato
     ? [
         {
-          label: 'Scarica attestato PDF',
+          label: t.downloadPdf,
           icon: FileText,
           run: () => downloadBytes(attestato.pdf, names!.pdf, 'application/pdf'),
         },
         {
-          label: 'Scarica attestato JSON',
+          label: t.downloadJson,
           icon: FileJson,
           run: () => downloadBytes(attestato.json, names!.json, 'application/json'),
         },
         {
-          label: 'Scarica prova Bitcoin (.ots)',
+          label: t.downloadOts,
           icon: Download,
           run: () => downloadBytes(attestato.ots, names!.ots, 'application/vnd.opentimestamps.v1'),
         },
@@ -174,35 +168,31 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="font-serif text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">Verifica e ottieni l'attestato</h1>
-      <p className="mt-5 max-w-[60ch] text-lg leading-relaxed text-ink-2">
-        Carica l'archivio originale con la sua ricevuta o il suo attestato. Il controllo dell'archivio avviene nel browser e
-        senza connessione. La rete serve solo per leggere la conferma dalla blockchain Bitcoin e, per una ricevuta,
-        generare l'attestato con la data.
-      </p>
+      <h1 className="font-serif text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">{t.title}</h1>
+      <p className="mt-5 max-w-[60ch] text-lg leading-relaxed text-ink-2">{t.intro}</p>
 
       {fromQr && (
         <div className="mt-8 rounded-xl border border-line bg-surface p-5">
-          <p className="text-sm font-medium text-ink-2">Impronta attesa dal QR code</p>
+          <p className="text-sm font-medium text-ink-2">{t.qrExpected}</p>
           <p className="mt-2 break-all font-mono text-sm text-ink">{fromQr}</p>
-          <p className="mt-2 text-sm text-muted">Basta caricare l'archivio per confrontarlo.</p>
+          <p className="mt-2 text-sm text-muted">{t.qrHint}</p>
         </div>
       )}
 
       <div className="mt-8 grid gap-6 sm:grid-cols-2">
-        <Slot title="1. Archivio .zip">
-          <DropZone compact onFile={chooseZip} disabled={!!busy} label="Trascina l'archivio" />
+        <Slot title={t.zipSlot}>
+          <DropZone compact onFile={chooseZip} disabled={!!busy} label={t.dragZip} />
         </Slot>
-        <Slot title="2. Ricevuta o attestato (PDF o JSON)">
+        <Slot title={t.evidenceSlot}>
           <DropZone
             compact
             onFile={chooseEvidence}
             disabled={!!busy}
-            label="Trascina il PDF o il JSON"
-            inputLabel="Seleziona ricevuta o attestato (PDF o JSON)"
+            label={t.dragEvidence}
+            inputLabel={t.evidenceInput}
             accept=".pdf,.json,application/pdf,application/json"
-            multipleMessage="Carica un solo file"
-            validate={async (f) => (/\.(pdf|json)$/i.test(f.name) ? undefined : EVIDENCE_FORMAT)}
+            multipleMessage={t.single}
+            validate={async (f) => (/\.(pdf|json)$/i.test(f.name) ? undefined : t.evidenceFormat)}
           />
         </Slot>
       </div>
@@ -210,7 +200,7 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
       <div className="mt-6 flex items-center gap-4">
         <Button onClick={verify} disabled={!canVerify}>
           {busy === 'verify' ? <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <ShieldCheck aria-hidden className="size-4" />}
-          Verifica
+          {t.button}
         </Button>
       </div>
 
@@ -222,16 +212,16 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
 
       {error && (
         <div className="mt-6">
-          <Alert tone="danger" title="Impossibile verificare">
+          <Alert tone="danger" title={t.cannotVerify}>
             {error}
           </Alert>
         </div>
       )}
 
       {allChecks && (
-        <section aria-label="Risultato" className="mt-10 [animation:pm-reveal_.4s_ease-out_both]">
+        <section aria-label={t.result} className="mt-10 [animation:pm-reveal_.4s_ease-out_both]">
           <h2 className="font-serif text-2xl font-semibold tracking-tight">
-            {failed ? 'La verifica ha trovato problemi' : 'Verifica completata'}
+            {failed ? t.problems : t.done}
           </h2>
           {evidence && (
             <div className="mt-4">
@@ -246,22 +236,19 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
             <div className="mt-6 flex flex-wrap gap-3">
               <Button variant="secondary" onClick={runBitcoin} disabled={!!busy}>
                 {busy === 'bitcoin' ? <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <Bitcoin aria-hidden className="size-4" />}
-                Controlla conferma Bitcoin (richiede connessione)
+                {t.checkBitcoin}
               </Button>
               {bitcoin?.upgraded && canIssue && !attestato && (
                 <Button onClick={generateAttestato} disabled={!!busy}>
                   {busy === 'attestato' ? <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <Award aria-hidden className="size-4" />}
-                  Genera attestato
+                  {t.generate}
                 </Button>
               )}
             </div>
           )}
           {attestato && (
             <div className="mt-6 rounded-xl border border-emerald/30 bg-emerald-soft p-5">
-              <p className="text-sm font-medium text-ink">
-                Attestato pronto: la data di esistenza è quella del blocco Bitcoin #{attestato.certificate.opentimestamps.block}.
-                Scarica ogni file e conservalo con l'archivio.
-              </p>
+              <p className="text-sm font-medium text-ink">{t.ready(attestato.certificate.opentimestamps.block!)}</p>
               <div className="mt-4 flex flex-wrap gap-3">
                 {downloads.map(({ label, icon: Icon, run }, i) => (
                   <Button key={label} variant={i === 0 ? undefined : 'secondary'} onClick={run}>
@@ -274,7 +261,7 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
           )}
           {attestatoError && (
             <div className="mt-4">
-              <Alert tone="warning" title="Attestato">
+              <Alert tone="warning" title={t.attestationTitle}>
                 {attestatoError}
               </Alert>
             </div>

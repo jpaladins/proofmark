@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { confirmedCert, PENDING_HASH, PENDING_OTS, pendingCert } from '@/test/certFixtures'
 import type { Check } from '@/core/verify/check'
 import { downloadBytes } from './download'
@@ -41,6 +41,7 @@ function fakeDeps(over: Partial<VerifyPageDeps> = {}): VerifyPageDeps {
 const zipInput = () => screen.getByLabelText('Seleziona archivio .zip')
 const evidenceInput = () => screen.getByLabelText('Seleziona ricevuta o attestato (PDF o JSON)')
 
+beforeEach(() => window.history.replaceState(null, '', '/proofmark/it/'))
 afterEach(() => {
   window.history.replaceState(null, '', '/proofmark/it/')
   vi.mocked(downloadBytes).mockClear()

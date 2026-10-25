@@ -1,18 +1,9 @@
 import { AlertTriangle, Check, Loader2, X } from 'lucide-react'
 import type { StepId, StepState } from '@/flow/certify'
 import { cx } from '../cx'
+import { useT } from '../LangContext'
 
-const STEP_LABELS: Record<StepId, string> = {
-  hash: 'Calcolo Hash',
-  ots: 'Ancoraggio Bitcoin',
-  cert: 'Ricevuta Generata',
-}
 const ORDER: StepId[] = ['hash', 'ots', 'cert']
-const IDLE_HINT: Record<StepId, string> = {
-  hash: 'Impronta SHA-256 nel browser',
-  ots: 'OpenTimestamps',
-  cert: 'Ricevuta PDF e JSON',
-}
 
 function Marker({ n, status }: { n: number; status: StepState['status'] }) {
   const base = 'grid size-8 shrink-0 place-items-center rounded-full text-sm font-semibold transition-colors'
@@ -28,17 +19,10 @@ function Marker({ n, status }: { n: number; status: StepState['status'] }) {
   return <span className={cx(base, 'border border-line-strong text-muted')}>{n}</span>
 }
 
-const STATUS_TEXT: Record<StepState['status'], string> = {
-  idle: 'in attesa',
-  active: 'in corso',
-  done: 'completato',
-  warn: 'completato con avviso',
-  error: 'non riuscito',
-}
-
 export function Stepper({ steps }: { steps: Record<StepId, StepState> }) {
+  const t = useT().stepper
   return (
-    <ol className="grid gap-3 sm:grid-cols-3 sm:gap-0" aria-label="Avanzamento della certificazione">
+    <ol className="grid gap-3 sm:grid-cols-3 sm:gap-0" aria-label={t.label}>
       {ORDER.map((id, i) => {
         const s = steps[id]
         return (
@@ -59,11 +43,11 @@ export function Stepper({ steps }: { steps: Record<StepId, StepState> }) {
             <Marker n={i + 1} status={s.status} />
             <div className="min-w-0">
               <p className="text-sm font-semibold text-ink">
-                <span data-label>{STEP_LABELS[id]}</span>
-                <span className="sr-only">: {STATUS_TEXT[s.status]}</span>
+                <span data-label>{t.steps[id]}</span>
+                <span className="sr-only">: {t.status[s.status]}</span>
               </p>
               <p className={cx('mt-0.5 text-xs', s.status === 'error' ? 'text-red' : s.status === 'warn' ? 'text-amber' : 'text-muted')}>
-                {s.message ?? IDLE_HINT[id]}
+                {s.message ?? t.hints[id]}
               </p>
             </div>
           </li>
