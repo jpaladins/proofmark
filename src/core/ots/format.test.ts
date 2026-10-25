@@ -61,11 +61,11 @@ describe('OpenTimestamps codec hardening', () => {
 
   test('rejects a crafted proof whose messages amplify far beyond its size', () => {
     const data = fanOut(1000) // ~14 KB of input, ~4 MB of derived messages
-    expect(() => parseTimestamp(data, new Uint8Array(4000))).toThrow(/troppo grande/)
+    expect(() => parseTimestamp(data, new Uint8Array(4000))).toThrow(/too large/)
   })
 
   test('rejects a proof with too many nodes', () => {
-    expect(() => parseTimestamp(fanOut(20_000), new Uint8Array(32))).toThrow(/troppo grande/)
+    expect(() => parseTimestamp(fanOut(20_000), new Uint8Array(32))).toThrow(/too large/)
   })
 
   test('accepts a moderately branched proof', () => {
@@ -90,7 +90,7 @@ describe('OpenTimestamps codec hardening', () => {
     const max = parseTimestamp(at([0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f]), new Uint8Array(32))
     expect(max.attestations[0]).toEqual({ kind: 'bitcoin', height: 2 ** 49 - 1 })
     expect(() => parseTimestamp(at([0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01]), new Uint8Array(32))).toThrow(
-      /intero troppo grande/,
+      /integer too large/,
     )
   })
 })

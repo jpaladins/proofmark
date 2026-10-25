@@ -6,7 +6,7 @@ import type { Bytes } from '@/core/hash/sha256'
 import type { HashProgress } from '@/core/hash/hashFile'
 import { inspectOts } from '@/core/ots/ots'
 import type { FontBytes } from '@/core/pdf/fonts'
-import type { Lang } from '@/i18n'
+import { messages, type Lang } from '@/i18n'
 
 export type StepId = 'hash' | 'ots' | 'cert'
 export type StepState = {
@@ -32,9 +32,6 @@ export type CertifyDeps = {
   renderAttestato: (cert: Certificate, proofs: { ots: Uint8Array }, opts?: { fonts?: FontBytes }) => Promise<PDFDocument>
 }
 
-export const OTS_ERROR = 'Impossibile raggiungere i calendari Bitcoin. Controlla la connessione e riprova.'
-export const OTS_MISMATCH = "La prova ricevuta non corrisponde all'archivio. Riprova."
-export const PDF_ERROR = 'Impossibile generare la ricevuta PDF. Riprova.'
 export const REMINDER_DELAY_MS = 3 * 3600_000
 
 /** Thrown when a step fails; `resume` lets a retry skip the hashing already done. */
@@ -54,12 +51,13 @@ const throwIfAborted = (signal?: AbortSignal) => {
 }
 
 export async function runCertification(
-  input: { file: File; declared?: { author?: string; title?: string }; lang?: Lang },
+  input: { file: File; declared?: { author?: string; title?: string }; lang: Lang },
   deps: CertifyDeps,
   onStep: (id: StepId, s: StepState) => void,
   signal?: AbortSignal,
   resume: { sha256?: string } = {},
 ): Promise<CertifyResult> {
+  const t = messages(input.lang)
   // 1. Hash
   let sha256 = resume.sha256
   if (!sha256) {
@@ -78,7 +76,7 @@ export async function runCertification(
       )
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') throw err
-      const message = "Impossibile leggere l'archivio. Riprova."
+      const message = t.errors.hashRead
       onStep('hash', { status: 'error', message })
       throw new CertifyError('hash', message, {})
     }
@@ -94,29 +92,29 @@ export async function runCertification(
     ots = await deps.stampHash(sha256, signal)
   } catch {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
-    onStep('ots', { status: 'error', message: OTS_ERROR })
-    throw new CertifyError('ots', OTS_ERROR, { sha256 })
+    onStep('ots', { status: 'error', message: t.errors.ots })
+    throw new CertifyError('ots', t.errors.ots, { sha256 })
   }
   let otsInfo: ReturnType<typeof inspectOts>
   try {
     otsInfo = inspectOts(ots)
     if (otsInfo.digestHex !== sha256) throw new Error('digest mismatch')
   } catch {
-    onStep('ots', { status: 'error', message: OTS_MISMATCH })
-    throw new CertifyError('ots', OTS_MISMATCH, { sha256 })
+    onStep('ots', { status: 'error', message: t.errors.otsMismatch })
+    throw new CertifyError('ots', t.errors.otsMismatch, { sha256 })
   }
-  onStep('ots', { status: 'done', message: `${otsInfo.calendars.length} calendari` })
+  onStep('ots', { status: 'done', message: t.flow.calendars(otsInfo.calendars.length) })
   throwIfAborted(signal)
 
   // 3. Receipt
   onStep('cert', { status: 'active' })
-  const certificate = buildCertificate({ file: input.file, sha256, ots, otsInfo, requestedAt, declared: input.declared, lang: input.lang ?? 'it' })
+  const certificate = buildCertificate({ file: input.file, sha256, ots, otsInfo, requestedAt, declared: input.declared, lang: input.lang })
   let pdf: Bytes
   try {
     pdf = new Uint8Array(await (await deps.renderAttestato(certificate, { ots })).save())
   } catch {
-    onStep('cert', { status: 'error', message: PDF_ERROR })
-    throw new CertifyError('cert', PDF_ERROR, { sha256 })
+    onStep('cert', { status: 'error', message: t.errors.pdf })
+    throw new CertifyError('cert', t.errors.pdf, { sha256 })
   }
   onStep('cert', { status: 'done' })
 

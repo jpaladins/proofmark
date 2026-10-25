@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { hashFile } from '@/core/hash/hashFile'
+import { messages, type Lang } from '@/i18n'
 import { stampHash } from '@/core/ots/ots'
 import { CertifyError, runCertification, type CertifyDeps, type CertifyResult, type StepId, type StepState } from './certify'
 
@@ -24,22 +25,22 @@ export function useCertify(deps: CertifyDeps = defaultCertifyDeps) {
   const [error, setError] = useState<string>()
   const [running, setRunning] = useState(false)
   const controller = useRef<AbortController | undefined>(undefined)
-  const last = useRef<{ file: File; declared?: Declared; resume: { sha256?: string } } | undefined>(
+  const last = useRef<{ file: File; declared?: Declared; lang: Lang; resume: { sha256?: string } } | undefined>(
     undefined,
   )
 
   const run = useCallback(
-    async (file: File, declared: Declared | undefined, resume: { sha256?: string }) => {
+    async (file: File, declared: Declared | undefined, lang: Lang, resume: { sha256?: string }) => {
       controller.current?.abort()
       const ctrl = new AbortController()
       controller.current = ctrl
-      last.current = { file, declared, resume }
+      last.current = { file, declared, lang, resume }
       setError(undefined)
       setResult(undefined)
       setRunning(true)
       try {
         const res = await runCertification(
-          { file, declared },
+          { file, declared, lang },
           deps,
           (id, s) => !ctrl.signal.aborted && setSteps((prev) => ({ ...prev, [id]: s })),
           ctrl.signal,
@@ -49,10 +50,10 @@ export function useCertify(deps: CertifyDeps = defaultCertifyDeps) {
       } catch (err) {
         if (ctrl.signal.aborted) return
         if (err instanceof CertifyError) {
-          last.current = { file, declared, resume: err.resume }
+          last.current = { file, declared, lang, resume: err.resume }
           setError(err.message)
         } else {
-          setError('Si è verificato un errore imprevisto. Riprova.')
+          setError(messages(lang).errors.unexpected)
         }
       } finally {
         if (!ctrl.signal.aborted) setRunning(false)
@@ -62,15 +63,15 @@ export function useCertify(deps: CertifyDeps = defaultCertifyDeps) {
   )
 
   const start = useCallback(
-    (file: File, declared?: Declared) => {
+    (file: File, declared: Declared | undefined, lang: Lang) => {
       setSteps(IDLE)
-      void run(file, declared, {})
+      void run(file, declared, lang, {})
     },
     [run],
   )
 
   const retry = useCallback(() => {
-    if (last.current) void run(last.current.file, last.current.declared, last.current.resume)
+    if (last.current) void run(last.current.file, last.current.declared, last.current.lang, last.current.resume)
   }, [run])
 
   const reset = useCallback(() => {

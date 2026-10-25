@@ -4,6 +4,7 @@ import { DECLARED_MAX } from '@/core/cert/certificate'
 import { formatBytes } from '@/i18n'
 import type { CertifyDeps } from '@/flow/certify'
 import { defaultCertifyDeps, useCertify } from '@/flow/useCertify'
+import { useLang } from '../LangContext'
 import { CertificateCard } from '../components/CertificateCard'
 import { DropZone } from '../components/DropZone'
 import { HashProgress } from '../components/HashProgress'
@@ -35,6 +36,7 @@ function Field({ label, value, onChange, disabled }: { label: string; value: str
 }
 
 export function CertifyPage({ deps = defaultCertifyDeps }: { deps?: CertifyDeps }) {
+  const lang = useLang()
   const { steps, result, error, running, start, retry, reset } = useCertify(deps)
   const [author, setAuthor] = useState('')
   const [title, setTitle] = useState('')
@@ -101,7 +103,7 @@ export function CertifyPage({ deps = defaultCertifyDeps }: { deps?: CertifyDeps 
                     Controlla l'archivio e i dati dichiarati, poi conferma. La registrazione sulla blockchain Bitcoin non si
                     può annullare: per modificare qualcosa dopo, dovrai certificare di nuovo.
                   </p>
-                  <Button className="mt-4 w-full sm:w-auto" onClick={() => start(selected, { author, title })}>
+                  <Button className="mt-4 w-full sm:w-auto" onClick={() => start(selected, { author, title }, lang)}>
                     <ShieldCheck aria-hidden className="size-4" />
                     Certifica archivio
                   </Button>

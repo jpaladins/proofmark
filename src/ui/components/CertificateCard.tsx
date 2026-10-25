@@ -4,6 +4,7 @@ import { verifyDisplayFor } from '@/core/app'
 import { formatBytes, messages } from '@/i18n'
 import type { CertifyResult } from '@/flow/certify'
 import { utcOffset } from '@/core/time'
+import { useLang } from '../LangContext'
 import { buildReminderIcs } from '../ics'
 import { downloadBytes } from '../download'
 import { proofFileNames } from '@/core/cert/fileNames'
@@ -15,6 +16,7 @@ const fmtDateTime = (iso: string) =>
 const fmtTime = (d: Date) => new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' }).format(d)
 
 export function PendingBanner({ at, certId, fileName }: { at: Date; certId: string; fileName: string }) {
+  const lang = useLang()
   return (
     <Alert
       tone="info"
@@ -24,7 +26,7 @@ export function PendingBanner({ at, certId, fileName }: { at: Date; certId: stri
         <Button
           variant="secondary"
           onClick={() =>
-            downloadBytes(buildReminderIcs({ at, certId, fileName }), `${certId}-promemoria.ics`, 'text/calendar')
+            downloadBytes(buildReminderIcs({ at, certId, fileName, lang }), `${certId}-promemoria.ics`, 'text/calendar')
           }
         >
           <CalendarPlus aria-hidden className="size-4" />

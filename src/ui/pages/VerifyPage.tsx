@@ -1,5 +1,6 @@
 import { Award, Bitcoin, Download, FileJson, FileText, Loader2, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
+import type { Lang } from '@/i18n'
 import { hashFile, type HashProgress as Progress } from '@/core/hash/hashFile'
 import type { Check } from '@/core/verify/check'
 import {
@@ -18,12 +19,13 @@ import { HashProgress } from '../components/HashProgress'
 import { Alert, Button } from '../components/primitives'
 import { downloadBytes } from '../download'
 import { proofFileNames } from '@/core/cert/fileNames'
+import { useLang } from '../LangContext'
 import { useRoute } from '../router'
 
 export type VerifyPageDeps = {
   hashFile: (file: File, onProgress: (p: Progress) => void) => Promise<string>
-  loadEvidence: (file: File) => Promise<Evidence>
-  verifyOffline: (zipSha256: string, ev: Evidence) => Promise<Check[]>
+  loadEvidence: (file: File, lang: Lang) => Promise<Evidence>
+  verifyOffline: (zipSha256: string, ev: Evidence, lang: Lang) => Promise<Check[]>
   checkBitcoin: typeof checkBitcoin
   buildAttestato: (
     ev: Evidence,
@@ -35,7 +37,7 @@ const defaultDeps: VerifyPageDeps = {
   hashFile,
   loadEvidence,
   verifyOffline,
-  checkBitcoin: (ev) => checkBitcoin(ev),
+  checkBitcoin: (ev, lang) => checkBitcoin(ev, lang),
   buildAttestato: async (ev, upgraded) => {
     const { renderAttestato } = await import('@/core/pdf/renderAttestato')
     return buildAttestato(ev, upgraded, { renderAttestato })
@@ -55,6 +57,7 @@ function Slot({ title, children }: { title: string; children: React.ReactNode })
 
 export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
   const { hashParams } = useRoute()
+  const lang = useLang()
   const fromQr = /^[0-9a-f]{64}$/.test(hashParams.get('sha256') ?? '') ? hashParams.get('sha256')! : undefined
   const [zip, setZip] = useState<File>()
   const [evidenceFile, setEvidenceFile] = useState<File>()
@@ -106,9 +109,9 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
         ])
         return
       }
-      const ev = await deps.loadEvidence(evidenceFile!)
+      const ev = await deps.loadEvidence(evidenceFile!, lang)
       setEvidence(ev)
-      setChecks(await deps.verifyOffline(sha256, ev))
+      setChecks(await deps.verifyOffline(sha256, ev, lang))
     } catch (err) {
       setError(err instanceof EvidenceError ? err.message : 'Verifica non riuscita. Controlla i file e riprova.')
     } finally {
@@ -123,7 +126,7 @@ export function VerifyPage({ deps = defaultDeps }: { deps?: VerifyPageDeps }) {
     setAttestato(undefined)
     setAttestatoError(undefined)
     try {
-      setBitcoin(await deps.checkBitcoin(evidence))
+      setBitcoin(await deps.checkBitcoin(evidence, lang))
     } finally {
       setBusy(undefined)
     }

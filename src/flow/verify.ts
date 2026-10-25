@@ -16,6 +16,7 @@ import { inspectOts, upgradeOts, verifyOtsOnline, type OtsInfo } from '@/core/ot
 import type { FontBytes } from '@/core/pdf/fonts'
 import type { Check } from '@/core/verify/check'
 import { utcOffset } from '@/core/time'
+import { localeOf, messages, type Lang } from '@/i18n'
 
 export type Evidence = { cert: Certificate; ots: Bytes; pdf?: Bytes }
 
@@ -28,21 +29,29 @@ export class EvidenceError extends Error {
   }
 }
 
-const fmtDate = (d: Date) =>
-  `${new Intl.DateTimeFormat('it-IT', { dateStyle: 'long', timeStyle: 'short' }).format(d)} ${utcOffset(d)}`
+/** Date, time and UTC offset of a block in the device's time zone, in the page language. */
+function fmtDate(d: Date, lang: Lang): string {
+  const locale = localeOf(lang)
+  const date = new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(d)
+  const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d)
+  return messages(lang).flow.blockMoment(date, time, utcOffset(d))
+}
 
-function parseOrThrow(json: string): Certificate {
+function parseOrThrow(json: string, lang: Lang): Certificate {
+  const { evidence } = messages(lang).errors
   try {
     return parseCertificate(json)
   } catch (err) {
-    throw new EvidenceError('format', err instanceof CertError ? err.message : 'Certificato non leggibile.')
+    const notJson = err instanceof CertError && err.code === 'json'
+    throw new EvidenceError('format', notJson ? evidence.certificateJson : evidence.certificateInvalid)
   }
 }
 
-export async function loadEvidence(file: File): Promise<Evidence> {
+export async function loadEvidence(file: File, lang: Lang): Promise<Evidence> {
+  const { evidence: errors } = messages(lang).errors
   const name = file.name.toLowerCase()
   if (name.endsWith('.json')) {
-    const cert = parseOrThrow(await file.text())
+    const cert = parseOrThrow(await file.text(), lang)
     return { cert, ots: base64ToBytes(cert.opentimestamps.otsBase64) }
   }
   if (name.endsWith('.pdf')) {
@@ -52,7 +61,7 @@ export async function loadEvidence(file: File): Promise<Evidence> {
     try {
       files = await extractAttachments(pdf)
     } catch {
-      throw new EvidenceError('format', 'Il PDF non è leggibile.')
+      throw new EvidenceError('format', errors.pdfUnreadable)
     }
     // Attachments are named after the archive (e.g. "opera.ots"); PDFs issued before that used
     // "prova.ots" and "certificato.json", so pick them by extension.
@@ -60,12 +69,12 @@ export async function loadEvidence(file: File): Promise<Evidence> {
     const otsName = names.find((n) => n.toLowerCase().endsWith('.ots'))
     const jsonName = names.find((n) => n.toLowerCase().endsWith('.json'))
     if (!otsName || !jsonName) {
-      throw new EvidenceError('missing', 'Questo PDF non contiene le prove di ProofMark (file .ots e certificato JSON).')
+      throw new EvidenceError('missing', errors.pdfMissingProofs)
     }
-    const cert = parseOrThrow(new TextDecoder().decode(files[jsonName]))
+    const cert = parseOrThrow(new TextDecoder().decode(files[jsonName]), lang)
     return { cert, ots: files[otsName], pdf }
   }
-  throw new EvidenceError('format', "Carica la ricevuta, l'attestato PDF o il certificato JSON di ProofMark.")
+  throw new EvidenceError('format', errors.wrongType)
 }
 
 function inspect(ots: Uint8Array): OtsInfo | undefined {
@@ -76,44 +85,45 @@ function inspect(ots: Uint8Array): OtsInfo | undefined {
   }
 }
 
-export async function verifyOffline(zipSha256: string, ev: Evidence): Promise<Check[]> {
+export async function verifyOffline(zipSha256: string, ev: Evidence, lang: Lang): Promise<Check[]> {
+  const t = messages(lang).flow.checks
   const expected = ev.cert.file.sha256
   const checks: Check[] = [
     zipSha256 === expected
-      ? { id: 'hash', status: 'ok', label: "L'impronta dell'archivio corrisponde al certificato" }
+      ? { id: 'hash', status: 'ok', label: t.hashOk }
       : {
           id: 'hash',
           status: 'fail',
-          label: "L'impronta non corrisponde: l'archivio è diverso da quello certificato",
-          detail: `Archivio: ${zipSha256}\nCertificato: ${expected}`,
+          label: t.hashFail,
+          detail: t.hashFailDetail(zipSha256, expected),
         },
   ]
 
   const info = inspect(ev.ots)
   if (!info) {
-    checks.push({ id: 'ots-hash', status: 'fail', label: 'Prova Bitcoin non leggibile' })
+    checks.push({ id: 'ots-hash', status: 'fail', label: t.otsUnreadable })
     return checks
   }
   checks.push(
     info.digestHex === expected
-      ? { id: 'ots-hash', status: 'ok', label: 'La prova Bitcoin si riferisce a questo archivio' }
-      : { id: 'ots-hash', status: 'fail', label: "La prova Bitcoin si riferisce a un'altra impronta" },
+      ? { id: 'ots-hash', status: 'ok', label: t.otsMatches }
+      : { id: 'ots-hash', status: 'fail', label: t.otsOther },
   )
 
   if (ev.cert.kind === 'ricevuta') {
     checks.push({
       id: 'meta',
       status: 'warn',
-      label: 'Ricevuta: la data non è ancora attestata. Controlla la conferma Bitcoin.',
+      label: t.receiptPending,
     })
-  } else if (info.status === 'confirmed' && info.block === ev.cert.opentimestamps.block) {
+  } else if (info.status === 'confirmed' && info.block !== undefined && info.block === ev.cert.opentimestamps.block) {
     checks.push({
       id: 'meta',
       status: 'ok',
-      label: `La prova contiene l'attestazione nel blocco Bitcoin #${info.block}. Controlla la conferma per verificarne la data.`,
+      label: t.attestationBlockOk(info.block),
     })
   } else {
-    checks.push({ id: 'meta', status: 'fail', label: 'Il certificato dichiara un blocco diverso da quello della prova' })
+    checks.push({ id: 'meta', status: 'fail', label: t.attestationBlockDiffers })
   }
   return checks
 }
@@ -130,11 +140,13 @@ export type BitcoinDeps = {
 
 export async function checkBitcoin(
   ev: Evidence,
+  lang: Lang,
   deps: BitcoinDeps = {},
 ): Promise<{ check: Check; upgraded?: { ots: Bytes; block: number; blockTime: Date } }> {
   const upgrade = deps.upgradeOts ?? ((o: Uint8Array) => upgradeOts(o))
   const verifyOnline = deps.verifyOtsOnline ?? ((o: Uint8Array) => verifyOtsOnline(o))
-  const pending: Check = { id: 'bitcoin', status: 'warn', label: 'Conferma non ancora disponibile, riprova tra qualche ora' }
+  const t = messages(lang).flow.checks
+  const pending: Check = { id: 'bitcoin', status: 'warn', label: t.bitcoinPending }
   try {
     let ots = ev.ots
     if (inspectOts(ots).status === 'pending') ots = (await upgrade(ots)).ots
@@ -150,8 +162,8 @@ export async function checkBitcoin(
           check: {
             id: 'bitcoin',
             status: 'fail',
-            label: 'La data del certificato non corrisponde alla blockchain',
-            detail: `Blockchain: blocco #${confirmed.block} del ${fmtDate(confirmed.blockTime)}`,
+            label: t.dateMismatch,
+            detail: t.dateMismatchDetail(confirmed.block, fmtDate(confirmed.blockTime, lang)),
           },
         }
       }
@@ -159,14 +171,15 @@ export async function checkBitcoin(
     const check: Check = {
       id: 'bitcoin',
       status: 'ok',
-      label: `Confermato nel blocco #${confirmed.block} del ${fmtDate(confirmed.blockTime)}`,
+      label: t.confirmed(confirmed.block, fmtDate(confirmed.blockTime, lang)),
     }
     return { check, ...(ev.cert.kind === 'ricevuta' ? { upgraded: { ots, ...confirmed } } : {}) }
   } catch (err) {
     if (err instanceof OtsError && err.code === 'invalid') {
-      return { check: { id: 'bitcoin', status: 'fail', label: 'La prova Bitcoin non corrisponde alla blockchain', detail: err.message } }
+      const detail = err.height === undefined ? undefined : t.bitcoinInvalidDetail(err.height)
+      return { check: { id: 'bitcoin', status: 'fail', label: t.bitcoinInvalid, detail } }
     }
-    return { check: { id: 'bitcoin', status: 'warn', label: 'Impossibile contattare la rete Bitcoin. Riprova più tardi.' } }
+    return { check: { id: 'bitcoin', status: 'warn', label: t.bitcoinUnreachable } }
   }
 }
 

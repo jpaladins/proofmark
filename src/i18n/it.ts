@@ -120,4 +120,47 @@ export const it: Messages = {
     attachments: { ots: 'Prova OpenTimestamps (blockchain Bitcoin)', json: 'Certificato ProofMark (JSON)' },
     metaSubject: (fileName, sha256) => `Prova di esistenza dell'archivio ${fileName} (SHA-256 ${sha256})`,
   },
+  errors: {
+    hashRead: "Impossibile leggere l'archivio. Riprova.",
+    ots: 'Impossibile raggiungere i calendari Bitcoin. Controlla la connessione e riprova.',
+    otsMismatch: "La prova ricevuta non corrisponde all'archivio. Riprova.",
+    pdf: 'Impossibile generare la ricevuta PDF. Riprova.',
+    unexpected: 'Si è verificato un errore imprevisto. Riprova.',
+    evidence: {
+      wrongType: "Carica la ricevuta, l'attestato PDF o il certificato JSON di ProofMark.",
+      certificateJson: 'Il certificato non è un file JSON valido.',
+      certificateInvalid: 'Certificato non leggibile.',
+      pdfUnreadable: 'Il PDF non è leggibile.',
+      pdfMissingProofs: 'Questo PDF non contiene le prove di ProofMark (file .ots e certificato JSON).',
+    },
+  },
+  flow: {
+    calendars: (count: number) => `${count} calendari`,
+    blockMoment: (date: string, time: string, offset: string) => `${date}, ${time} ${offset}`,
+    checks: {
+      hashOk: "L'impronta dell'archivio corrisponde al certificato",
+      hashFail: "L'impronta non corrisponde: l'archivio è diverso da quello certificato",
+      hashFailDetail: (archive: string, certificate: string) => `Archivio: ${archive}\nCertificato: ${certificate}`,
+      otsUnreadable: 'Prova Bitcoin non leggibile',
+      otsMatches: 'La prova Bitcoin si riferisce a questo archivio',
+      otsOther: "La prova Bitcoin si riferisce a un'altra impronta",
+      receiptPending: 'Ricevuta: la data non è ancora attestata. Controlla la conferma Bitcoin.',
+      attestationBlockOk: (block: number) =>
+        `La prova contiene l'attestazione nel blocco Bitcoin #${block}. Controlla la conferma per verificarne la data.`,
+      attestationBlockDiffers: 'Il certificato dichiara un blocco diverso da quello della prova',
+      bitcoinPending: 'Conferma non ancora disponibile, riprova tra qualche ora',
+      dateMismatch: 'La data del certificato non corrisponde alla blockchain',
+      dateMismatchDetail: (block: number, moment: string) => `Blockchain: blocco #${block} del ${moment}`,
+      confirmed: (block: number, moment: string) => `Confermato nel blocco #${block} del ${moment}`,
+      bitcoinInvalid: 'La prova Bitcoin non corrisponde alla blockchain',
+      bitcoinInvalidDetail: (height: number) => `La prova non corrisponde al blocco Bitcoin #${height}.`,
+      bitcoinUnreachable: 'Impossibile contattare la rete Bitcoin. Riprova più tardi.',
+    },
+  },
+  reminder: {
+    prodId: '-//ProofMark//Promemoria//IT',
+    summary: 'ProofMark — conferma Bitcoin',
+    description: (verifyUrl: string, fileName: string, certId: string) =>
+      `Apri ${verifyUrl}, carica l'archivio ${fileName} e l'attestato ${certId} e scarica l'attestato aggiornato con la conferma Bitcoin.`,
+  },
 }

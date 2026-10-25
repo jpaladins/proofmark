@@ -123,4 +123,50 @@ export const en = {
     attachments: { ots: 'OpenTimestamps proof (Bitcoin blockchain)', json: 'ProofMark certificate (JSON)' },
     metaSubject: (fileName: string, sha256: string) => `Proof of existence of the archive ${fileName} (SHA-256 ${sha256})`,
   },
+  /** User-facing failures and results of the certification and verification flows. */
+  errors: {
+    hashRead: 'Could not read the archive. Try again.',
+    ots: 'Could not reach the Bitcoin calendars. Check your connection and try again.',
+    otsMismatch: 'The proof received does not match the archive. Try again.',
+    pdf: 'Could not generate the PDF receipt. Try again.',
+    unexpected: 'An unexpected error occurred. Try again.',
+    evidence: {
+      wrongType: 'Upload a ProofMark receipt, attestation PDF or JSON certificate.',
+      certificateJson: 'The certificate is not a valid JSON file.',
+      certificateInvalid: 'This certificate cannot be read.',
+      pdfUnreadable: 'The PDF cannot be read.',
+      pdfMissingProofs: 'This PDF does not contain ProofMark proofs (an .ots file and a JSON certificate).',
+    },
+  },
+  flow: {
+    calendars: (count: number) => (count === 1 ? '1 calendar' : `${count} calendars`),
+    /** Dates in check labels: the date, then the time, then the UTC offset. */
+    blockMoment: (date: string, time: string, offset: string) => `${date}, ${time} ${offset}`,
+    checks: {
+      hashOk: "The archive's fingerprint matches the certificate",
+      hashFail: 'The fingerprint does not match: the archive is different from the certified one',
+      hashFailDetail: (archive: string, certificate: string) => `Archive: ${archive}\nCertificate: ${certificate}`,
+      otsUnreadable: 'Bitcoin proof cannot be read',
+      otsMatches: 'The Bitcoin proof refers to this archive',
+      otsOther: 'The Bitcoin proof refers to a different fingerprint',
+      receiptPending: 'Receipt: the date is not attested yet. Check the Bitcoin confirmation.',
+      attestationBlockOk: (block: number) =>
+        `The proof contains the attestation in Bitcoin block #${block}. Check the confirmation to verify the date.`,
+      attestationBlockDiffers: 'The certificate declares a different block from the one in the proof',
+      bitcoinPending: 'Confirmation not available yet, try again in a few hours',
+      dateMismatch: "The certificate's date does not match the blockchain",
+      dateMismatchDetail: (block: number, moment: string) => `Blockchain: block #${block} on ${moment}`,
+      confirmed: (block: number, moment: string) => `Confirmed in block #${block} on ${moment}`,
+      bitcoinInvalid: 'The Bitcoin proof does not match the blockchain',
+      bitcoinInvalidDetail: (height: number) => `The proof does not match Bitcoin block #${height}.`,
+      bitcoinUnreachable: 'Could not reach the Bitcoin network. Try again later.',
+    },
+  },
+  /** Reminder calendar event for the Bitcoin confirmation. */
+  reminder: {
+    prodId: '-//ProofMark//Reminder//EN',
+    summary: 'ProofMark — Bitcoin confirmation',
+    description: (verifyUrl: string, fileName: string, certId: string) =>
+      `Open ${verifyUrl}, upload the archive ${fileName} and the attestation ${certId}, and download the attestation updated with the Bitcoin confirmation.`,
+  },
 }

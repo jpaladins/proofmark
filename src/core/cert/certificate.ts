@@ -120,26 +120,26 @@ export function parseCertificate(json: string): Certificate {
   try {
     data = JSON.parse(json)
   } catch {
-    throw new CertError('json', 'Il certificato non è un file JSON valido.')
+    throw new CertError('json', 'The certificate is not valid JSON.')
   }
-  const invalid = (why: string) => new CertError('schema', `Certificato ProofMark non valido: ${why}.`)
-  if (!isObj(data) || data.schema !== 'proofmark/v1') throw invalid('formato sconosciuto')
+  const invalid = (why: string) => new CertError('schema', `Invalid ProofMark certificate: ${why}.`)
+  if (!isObj(data) || data.schema !== 'proofmark/v1') throw invalid('unknown format')
   const { file, opentimestamps } = data
-  if (!isStr(data.id) || !isStr(data.createdAt) || !isStr(data.requestedAt)) throw invalid('intestazione incompleta')
-  if (data.kind !== 'ricevuta' && data.kind !== 'attestato') throw invalid('tipo di documento sconosciuto')
+  if (!isStr(data.id) || !isStr(data.createdAt) || !isStr(data.requestedAt)) throw invalid('incomplete header')
+  if (data.kind !== 'ricevuta' && data.kind !== 'attestato') throw invalid('unknown document type')
   // A missing language means Italian (certificates issued before the English version).
-  if (data.lang !== undefined && !LANGS.includes(data.lang as Lang)) throw invalid('lingua sconosciuta')
+  if (data.lang !== undefined && !LANGS.includes(data.lang as Lang)) throw invalid('unknown language')
   if (!isObj(file) || !isStr(file.name) || typeof file.size !== 'number' || !isStr(file.lastModified)) {
-    throw invalid('dati del file mancanti')
+    throw invalid('missing file data')
   }
-  if (!isStr(file.sha256) || !/^[0-9a-f]{64}$/.test(file.sha256)) throw invalid('impronta SHA-256 non valida')
+  if (!isStr(file.sha256) || !/^[0-9a-f]{64}$/.test(file.sha256)) throw invalid('invalid SHA-256 fingerprint')
   if (
     !isObj(opentimestamps) ||
     !['pending', 'confirmed'].includes(opentimestamps.status as string) ||
     !Array.isArray(opentimestamps.calendars) ||
     !isStr(opentimestamps.otsBase64)
   ) {
-    throw invalid('prova Bitcoin mancante o non valida')
+    throw invalid('missing or invalid Bitcoin proof')
   }
   return data as unknown as Certificate
 }
