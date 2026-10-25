@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { APP_VERSION, DEVELOPER, REPO_URL } from '@/core/app'
 import { Header } from './components/Header'
+import { ItalianNotice } from './components/ItalianNotice'
 import { useT } from './LangContext'
 import { toUrl, useRoute } from './router'
 
@@ -16,6 +17,7 @@ export function Layout({ children }: { children: ReactNode }) {
         {t.skip}
       </a>
       <Header />
+      <ItalianNotice />
       <main id="content" className="mx-auto w-full max-w-6xl flex-1 px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
         {children}
       </main>

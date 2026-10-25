@@ -42,9 +42,10 @@ const subscribe = (cb: () => void) => {
 
 const snapshot = () => window.location.pathname + window.location.hash
 
-export function navigate(page: PageId, lang: Lang) {
-  const url = toUrl(page, lang)
-  if (window.location.pathname === url && !window.location.hash) return
+/** `hash` (with its `#`) is carried over, as when the language changes on a page that holds a `#sha256=`. */
+export function navigate(page: PageId, lang: Lang, hash = '') {
+  const url = toUrl(page, lang) + hash
+  if (window.location.pathname + window.location.hash === url) return
   window.history.pushState(null, '', url)
   window.dispatchEvent(new Event(NAV_EVENT))
   window.scrollTo?.({ top: 0 })
@@ -54,7 +55,7 @@ export function navigate(page: PageId, lang: Lang) {
 export function useRoute(): {
   page: PageId
   lang: Lang
-  navigate: (page: PageId, lang?: Lang) => void
+  navigate: (page: PageId, lang?: Lang, hash?: string) => void
   hashParams: URLSearchParams
 } {
   const current = useSyncExternalStore(subscribe, snapshot, () => '/')
@@ -64,6 +65,6 @@ export function useRoute(): {
     // Rewrites an old URL in place; it no longer matches a legacy path afterwards, so this runs once.
     if (legacy) window.history.replaceState(null, '', toUrl(page, lang) + (hash ? `#${hash}` : ''))
   }, [legacy, page, lang, hash])
-  const go = useCallback((p: PageId, l?: Lang) => navigate(p, l ?? lang), [lang])
+  const go = useCallback((p: PageId, l?: Lang, h?: string) => navigate(p, l ?? lang, h), [lang])
   return { page, lang, navigate: go, hashParams: new URLSearchParams(hash) }
 }

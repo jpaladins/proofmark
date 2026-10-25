@@ -1,6 +1,6 @@
 // Relative imports only: vite.config.ts imports this module, where the `@/` alias is unavailable.
 import { en } from './en.ts'
-import { it } from './it.ts'
+import { it, type ItMessages } from './it.ts'
 import type { Lang } from './types.ts'
 
 export { LANGS } from './types.ts'
@@ -9,7 +9,11 @@ export type Messages = typeof en
 
 const dictionaries: Record<Lang, Messages> = { en, it }
 
-export const messages = (lang: Lang): Messages => dictionaries[lang]
+export function messages(lang: 'it'): ItMessages
+export function messages(lang: Lang): Messages
+export function messages(lang: Lang): Messages {
+  return dictionaries[lang]
+}
 
 export const localeOf = (lang: Lang): 'en-GB' | 'it-IT' => (lang === 'en' ? 'en-GB' : 'it-IT')
 

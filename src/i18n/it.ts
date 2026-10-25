@@ -1,6 +1,9 @@
 import type { Messages } from './index.ts'
 
-export const it: Messages = {
+/** Italian also carries the notice shown to Italian visitors on English pages, so `en` has no such section. */
+export type ItMessages = Messages & { notice: { text: string; switchTo: string; close: string } }
+
+export const it: ItMessages = {
   app: {
     title: 'ProofMark — Prova di esistenza digitale',
     description:
@@ -300,5 +303,10 @@ export const it: Messages = {
     downloadOts: 'Scarica prova Bitcoin (.ots)',
     attestationTitle: 'Attestato',
     attestationError: "Impossibile generare l'attestato. Riprova.",
+  },
+  notice: {
+    text: 'Questo sito è disponibile in italiano.',
+    switchTo: "Passa all'italiano",
+    close: 'Chiudi',
   },
 }
