@@ -128,6 +128,12 @@ describe('language', () => {
     expect(certLang(pendingCert(undefined, { lang: 'en' }))).toBe('en')
   })
 
+  test.each([['fr'], [3]])('rejects an unknown language (%s)', (lang) => {
+    const json = JSON.parse(serializeCertificate(pendingCert(undefined, { lang: 'en' })))
+    json.lang = lang
+    expect(() => parseCertificate(JSON.stringify(json))).toThrowError(expect.objectContaining({ code: 'schema' }))
+  })
+
   test('lang round-trips through JSON', () => {
     const c = confirmedCert({ title: 'Work' }, { lang: 'en' })
     expect(parseCertificate(serializeCertificate(c))).toEqual(c)

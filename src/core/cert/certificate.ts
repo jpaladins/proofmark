@@ -1,7 +1,7 @@
 import { APP_URL, APP_VERSION } from '@/core/app'
 import { bytesToBase64 } from '@/core/base64'
 import type { OtsInfo } from '@/core/ots/ots'
-import { messages, type Lang } from '@/i18n'
+import { LANGS, messages, type Lang } from '@/i18n'
 
 /** Note stored with the declared data, in the certificate's language. */
 export const declaredNote = (lang: Lang): string => messages(lang).cert.declaredNote
@@ -127,6 +127,8 @@ export function parseCertificate(json: string): Certificate {
   const { file, opentimestamps } = data
   if (!isStr(data.id) || !isStr(data.createdAt) || !isStr(data.requestedAt)) throw invalid('intestazione incompleta')
   if (data.kind !== 'ricevuta' && data.kind !== 'attestato') throw invalid('tipo di documento sconosciuto')
+  // A missing language means Italian (certificates issued before the English version).
+  if (data.lang !== undefined && !LANGS.includes(data.lang as Lang)) throw invalid('lingua sconosciuta')
   if (!isObj(file) || !isStr(file.name) || typeof file.size !== 'number' || !isStr(file.lastModified)) {
     throw invalid('dati del file mancanti')
   }
