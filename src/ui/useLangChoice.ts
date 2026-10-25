@@ -9,10 +9,16 @@ let memory: Lang | undefined
 function read(): Lang | undefined {
   try {
     const v = localStorage.getItem(KEY)
-    return v === 'en' || v === 'it' ? v : undefined
+    // Storage may be readable but not writable (quota, some private modes): fall back to this visit's choice.
+    return v === 'en' || v === 'it' ? v : memory
   } catch {
     return memory
   }
+}
+
+/** Forgets the in-memory choice; for tests, which share this module across cases. */
+export function resetLangMemory() {
+  memory = undefined
 }
 
 const subscribe = (cb: () => void) => {

@@ -45,7 +45,8 @@ The site comes in English (the default) and Italian.
 | Privacy | `/proofmark/privacy` | `/proofmark/it/privacy` |
 
 - Old `/proofmark/verifica` links, such as the QR codes in Italian PDFs issued earlier, redirect to `/proofmark/it/verifica` and keep their `#sha256=` fragment.
-- The **EN | IT** switch in the header remembers the choice in `localStorage` (`pm:lang`). English pages show a notice to browsers whose first language is Italian.
+- The language switch sits in the footer, under the *Privacy & security · Source code* links: a single link with the other language's flag and name (**Italiano** on English pages, **English** on Italian pages) that opens the same page in that language. A QR `#sha256=` fragment is carried over; other anchors are not.
+- English pages show a notice to browsers whose first language is Italian. Picking a language with the switch or the notice, or closing the notice, saves the choice in `localStorage` under `pm:lang`.
 - Receipts and attestations come out in the language of the site that issued the receipt.
 
 ## Certificate format

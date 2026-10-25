@@ -51,6 +51,14 @@ export function navigate(page: PageId, lang: Lang, hash = '') {
   window.scrollTo?.({ top: 0 })
 }
 
+/**
+ * The fragment to carry over when the language changes: only a QR `#sha256=`, which means the same in
+ * both languages. Other anchors (privacy sections) have per-language ids, so they are dropped.
+ */
+export function carriedHash(): string {
+  return window.location.hash.startsWith('#sha256=') ? window.location.hash : ''
+}
+
 /** Minimal History-API router: three pages in two languages, plus the `#sha256=` fragment used by QR codes. */
 export function useRoute(): {
   page: PageId

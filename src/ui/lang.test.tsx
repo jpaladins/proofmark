@@ -2,11 +2,13 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import App from '@/App'
+import { resetLangMemory } from './useLangChoice'
 
 const HEX = 'a'.repeat(64)
 const setLanguages = (langs: string[]) => vi.spyOn(navigator, 'languages', 'get').mockReturnValue(langs)
 
 beforeEach(() => {
+  resetLangMemory()
   localStorage.clear()
   window.history.replaceState(null, '', '/proofmark/')
 })
@@ -49,6 +51,28 @@ describe('language switch', () => {
   })
 })
 
+describe('carrying the hash across languages', () => {
+  test('drops a privacy section anchor, whose ids differ per language', async () => {
+    setLanguages(['it-IT'])
+    window.history.replaceState(null, '', '/proofmark/privacy#network')
+    render(<App />)
+    expect(screen.getByRole('link', { name: 'Italiano' })).toHaveAttribute('href', '/proofmark/it/privacy')
+    expect(screen.getByRole('link', { name: "Passa all'italiano" })).toHaveAttribute('href', '/proofmark/it/privacy')
+    await userEvent.click(screen.getByRole('link', { name: 'Italiano' }))
+    expect(window.location.pathname + window.location.hash).toBe('/proofmark/it/privacy')
+  })
+
+  test('keeps a #sha256= fragment in the notice link too', async () => {
+    setLanguages(['it-IT'])
+    window.history.replaceState(null, '', `/proofmark/verify#sha256=${HEX}`)
+    render(<App />)
+    const link = screen.getByRole('link', { name: "Passa all'italiano" })
+    expect(link).toHaveAttribute('href', `/proofmark/it/verifica#sha256=${HEX}`)
+    await userEvent.click(link)
+    expect(window.location.pathname + window.location.hash).toBe(`/proofmark/it/verifica#sha256=${HEX}`)
+  })
+})
+
 describe('Italian notice', () => {
   test('shows for an Italian browser with no saved choice and hides on Chiudi', async () => {
     setLanguages(['it-IT', 'en'])
@@ -85,6 +109,17 @@ describe('Italian notice', () => {
     window.history.replaceState(null, '', '/proofmark/')
     setLanguages(['en-US'])
     render(<App />)
+    expect(screen.queryByText('Questo sito è disponibile in italiano.')).not.toBeInTheDocument()
+  })
+
+  test('hides on Chiudi when storage can be read but not written', async () => {
+    setLanguages(['it-IT'])
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('quota')
+    })
+    render(<App />)
+    expect(screen.getByText('Questo sito è disponibile in italiano.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Chiudi' }))
     expect(screen.queryByText('Questo sito è disponibile in italiano.')).not.toBeInTheDocument()
   })
 

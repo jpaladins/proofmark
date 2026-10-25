@@ -1,7 +1,7 @@
 import type { MouseEvent, ReactElement } from 'react'
 import type { Lang } from '@/i18n'
 import { useT } from '../LangContext'
-import { toUrl, useRoute } from '../router'
+import { carriedHash, toUrl, useRoute } from '../router'
 import { useLangChoice } from '../useLangChoice'
 
 const FLAG = 'h-3 w-4 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15 dark:ring-white/25'
@@ -47,12 +47,12 @@ export function LangSwitch() {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
     e.preventDefault()
     save(target)
-    navigate(page, target, window.location.hash)
+    navigate(page, target, carriedHash())
   }
   return (
     <nav aria-label={t.language} className="text-sm">
       <a
-        href={toUrl(page, target) + window.location.hash}
+        href={toUrl(page, target) + carriedHash()}
         hrefLang={target}
         lang={target}
         onClick={onClick}

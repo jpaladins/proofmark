@@ -1,6 +1,6 @@
 import { X } from 'lucide-react'
 import { messages } from '@/i18n'
-import { toUrl, useRoute } from '../router'
+import { carriedHash, toUrl, useRoute } from '../router'
 import { useLangChoice } from '../useLangChoice'
 
 /** Slim bar offering the Italian version to Italian browsers on an English page; always Italian, whatever the page language. */
@@ -16,13 +16,13 @@ export function ItalianNotice() {
         <p className="min-w-0 flex-1">
           {t.text}{' '}
           <a
-            href={toUrl(page, 'it') + window.location.hash}
+            href={toUrl(page, 'it') + carriedHash()}
             hrefLang="it"
             onClick={(e) => {
               if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
               e.preventDefault()
               save('it')
-              navigate(page, 'it', window.location.hash)
+              navigate(page, 'it', carriedHash())
             }}
             className="font-medium underline underline-offset-4"
           >
