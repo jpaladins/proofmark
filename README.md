@@ -28,11 +28,32 @@ You drag in your project's `.zip` archive and ProofMark:
 1. computes the **SHA-256** fingerprint in the browser, in a Web Worker and in chunks, even for archives of many GB;
 2. sends it to the **OpenTimestamps** calendars, which write it into a block of the **Bitcoin** blockchain;
 3. immediately hands you a **registration receipt** (PDF + JSON) with the `.ots` proof attached. The receipt does not yet attest to a date;
-4. once confirmed, usually within a few hours, you generate the **attestation of existence** on the **Verify** page (currently served at `/verifica`). The attestation reports the date of the Bitcoin block, read from the blockchain and never from the uploaded file.
+4. once confirmed, usually within a few hours, you generate the **attestation of existence** on the **Verify** page. The attestation reports the date of the Bitcoin block, read from the blockchain and never from the uploaded file.
 
 The **Verify** page also checks the archive against a receipt or an attestation. The comparison with the proof happens offline; the network is only needed to read the confirmation from the blockchain.
 
 > The archive is never uploaded. Only a non-reversible derivative of the fingerprint leaves the browser, sent to the OpenTimestamps calendars.
+
+## Languages
+
+The site comes in English (the default) and Italian.
+
+| Page | English | Italian |
+|---|---|---|
+| Certify | `/proofmark/` | `/proofmark/it/` |
+| Verify | `/proofmark/verify` | `/proofmark/it/verifica` |
+| Privacy | `/proofmark/privacy` | `/proofmark/it/privacy` |
+
+- Old `/proofmark/verifica` links, such as the QR codes in Italian PDFs issued earlier, redirect to `/proofmark/it/verifica` and keep their `#sha256=` fragment.
+- The **EN | IT** switch in the header remembers the choice in `localStorage` (`pm:lang`). English pages show a notice to browsers whose first language is Italian.
+- Receipts and attestations come out in the language of the site that issued the receipt.
+
+## Certificate format
+
+Receipts and attestations are a PDF plus a JSON file. The JSON identifies itself with `schema: "proofmark/v1"` and `kind: "ricevuta" | "attestato"`; these identifiers are the same in both languages.
+
+- The optional `lang` field (`"en"` or `"it"`) records the language of the document. When it is missing, as in every certificate issued before the English version, the language is Italian.
+- Downloads are named `<name>_receipt.pdf` / `.json` and `<name>_attestation.pdf` / `.json` in English, `<name>_ricevuta` and `<name>_attestato` in Italian. The proof is always `<name>.ots`.
 
 ## Architecture
 
