@@ -1,4 +1,4 @@
-import type { Messages } from './index'
+import type { Messages } from './index.ts'
 
 export const it: Messages = {
   app: {

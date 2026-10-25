@@ -1,3 +1,4 @@
+import { LangProvider } from './ui/LangContext'
 import { Layout } from './ui/Layout'
 import { CertifyPage } from './ui/pages/CertifyPage'
 import { PrivacyPage } from './ui/pages/PrivacyPage'
@@ -7,7 +8,11 @@ import { useTheme } from './ui/useTheme'
 
 export default function App() {
   useTheme()
-  const { path } = useRoute()
-  const page = path === '/verifica' ? <VerifyPage /> : path === '/privacy' ? <PrivacyPage /> : <CertifyPage />
-  return <Layout>{page}</Layout>
+  const { page } = useRoute()
+  const view = page === 'verify' ? <VerifyPage /> : page === 'privacy' ? <PrivacyPage /> : <CertifyPage />
+  return (
+    <LangProvider>
+      <Layout>{view}</Layout>
+    </LangProvider>
+  )
 }

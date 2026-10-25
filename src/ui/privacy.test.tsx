@@ -1,12 +1,13 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import App from '@/App'
 import { CSP } from '@/csp'
-import { PAGES } from '@/pages'
+import { ROUTES } from '@/pages'
 import { PrivacyPage } from './pages/PrivacyPage'
 
-afterEach(() => window.history.replaceState(null, '', '/'))
+beforeEach(() => window.history.replaceState(null, '', '/proofmark/it/'))
+afterEach(() => window.history.replaceState(null, '', '/proofmark/it/'))
 
 /** External hosts the CSP lets the site talk to, reduced to their registrable domain. */
 function cspDomains(): string[] {
@@ -24,18 +25,19 @@ describe('Privacy e sicurezza', () => {
     render(<App />)
     const footer = screen.getByRole('contentinfo')
     await user.click(within(footer).getByRole('link', { name: 'Privacy e sicurezza' }))
-    expect(window.location.pathname).toBe('/proofmark/privacy')
+    expect(window.location.pathname).toBe('/proofmark/it/privacy')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Privacy e sicurezza')
   })
 
   test('opens directly from its URL', () => {
-    window.history.replaceState(null, '', '/proofmark/privacy')
+    window.history.replaceState(null, '', '/proofmark/it/privacy')
     render(<App />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Privacy e sicurezza')
   })
 
   test('is published as its own static page', () => {
-    expect(PAGES).toContain('/privacy')
+    expect(ROUTES.en.privacy).toBe('/privacy')
+    expect(ROUTES.it.privacy).toBe('/it/privacy')
   })
 
   test('discloses every external service the site is allowed to contact', () => {

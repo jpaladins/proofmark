@@ -4,7 +4,7 @@ import { Header } from './components/Header'
 import { toUrl, useRoute } from './router'
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { navigate } = useRoute()
+  const { lang, navigate } = useRoute()
   return (
     <div className="flex min-h-dvh flex-col">
       <a
@@ -25,11 +25,11 @@ export function Layout({ children }: { children: ReactNode }) {
           <nav aria-label="Informazioni" className="flex flex-wrap gap-x-5 gap-y-2">
             <a
               className="underline-offset-4 hover:text-ink hover:underline"
-              href={toUrl('/privacy')}
+              href={toUrl('privacy', lang)}
               onClick={(e) => {
                 if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
                 e.preventDefault()
-                navigate('/privacy')
+                navigate('privacy')
               }}
             >
               Privacy e sicurezza

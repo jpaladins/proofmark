@@ -42,7 +42,7 @@ const zipInput = () => screen.getByLabelText('Seleziona archivio .zip')
 const evidenceInput = () => screen.getByLabelText('Seleziona ricevuta o attestato (PDF o JSON)')
 
 afterEach(() => {
-  window.history.replaceState(null, '', '/')
+  window.history.replaceState(null, '', '/proofmark/it/')
   vi.mocked(downloadBytes).mockClear()
 })
 
@@ -78,7 +78,7 @@ describe('VerifyPage', () => {
   })
 
   test('with a QR fragment, compares the archive alone against the expected hash', async () => {
-    window.history.replaceState(null, '', `/proofmark/verifica#sha256=${HASH}`)
+    window.history.replaceState(null, '', `/proofmark/it/verifica#sha256=${HASH}`)
     const user = userEvent.setup()
     const deps = fakeDeps()
     render(<VerifyPage deps={deps} />)
