@@ -1,7 +1,7 @@
 import { FileArchive, ShieldCheck, X } from 'lucide-react'
 import { useId, useState } from 'react'
 import { DECLARED_MAX } from '@/core/cert/certificate'
-import { formatBytes } from '@/core/pdf/content'
+import { formatBytes } from '@/i18n'
 import type { CertifyDeps } from '@/flow/certify'
 import { defaultCertifyDeps, useCertify } from '@/flow/useCertify'
 import { CertificateCard } from '../components/CertificateCard'
@@ -86,7 +86,7 @@ export function CertifyPage({ deps = defaultCertifyDeps }: { deps?: CertifyDeps 
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="break-all font-medium text-ink">{selected.name}</p>
-                  <p className="mt-0.5 text-sm text-muted">{formatBytes(selected.size)}</p>
+                  <p className="mt-0.5 text-sm text-muted">{formatBytes(selected.size, 'it')}</p>
                 </div>
                 {!started && (
                   <Button variant="ghost" onClick={() => setSelected(undefined)} className="-mr-2 -mt-1 shrink-0 px-2.5">

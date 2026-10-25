@@ -1,6 +1,6 @@
 import { Cpu } from 'lucide-react'
 import type { HashProgress as Progress } from '@/core/hash/hashFile'
-import { formatBytes } from '@/core/pdf/content'
+import { formatBytes } from '@/i18n'
 import { cx } from '../cx'
 import { formatEta } from '../formatEta'
 
@@ -31,7 +31,7 @@ export function HashProgress({ progress }: { progress?: Progress }) {
           ? { 'aria-valuetext': 'Avvio del calcolo' }
           : {
               'aria-valuenow': pct,
-              'aria-valuetext': `${pct}% (${formatBytes(progress!.bytesDone)} di ${formatBytes(progress!.total)})`,
+              'aria-valuetext': `${pct}% (${formatBytes(progress!.bytesDone, 'it')} di ${formatBytes(progress!.total, 'it')})`,
             })}
         className="relative mt-3 h-3 overflow-hidden rounded-full bg-surface ring-1 ring-inset ring-blue/20"
       >
@@ -47,7 +47,7 @@ export function HashProgress({ progress }: { progress?: Progress }) {
 
       <p className="mt-2.5 text-sm tabular-nums text-ink-2">
         {progress
-          ? `${formatBytes(progress.bytesDone)} di ${formatBytes(progress.total)} · ${progress.mbPerSec.toFixed(0)} MB/s · ${formatEta(progress.etaSec)}`
+          ? `${formatBytes(progress.bytesDone, 'it')} di ${formatBytes(progress.total, 'it')} · ${progress.mbPerSec.toFixed(0)} MB/s · ${formatEta(progress.etaSec)}`
           : 'Avvio del calcolo…'}
       </p>
       <p className="mt-3 flex gap-2 text-sm leading-relaxed text-muted">

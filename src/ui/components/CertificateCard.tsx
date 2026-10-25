@@ -1,6 +1,7 @@
 import { CalendarPlus, Download, FileJson, FileText, RotateCcw } from 'lucide-react'
 import { useLayoutEffect, useRef } from 'react'
-import { formatBytes, PENDING_REMINDER } from '@/core/pdf/content'
+import { PENDING_REMINDER } from '@/core/pdf/content'
+import { formatBytes } from '@/i18n'
 import type { CertifyResult } from '@/flow/certify'
 import { utcOffset } from '@/core/time'
 import { buildReminderIcs } from '../ics'
@@ -102,7 +103,7 @@ export function CertificateCard({ result, onReset }: { result: CertifyResult; on
       <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_20rem]">
         <dl>
           <Fact label="Archivio">
-            {c.file.name} <span className="text-muted">({formatBytes(c.file.size)})</span>
+            {c.file.name} <span className="text-muted">({formatBytes(c.file.size, 'it')})</span>
           </Fact>
           {c.declared?.author && <Fact label="Autore (dichiarato)">{c.declared.author}</Fact>}
           {c.declared?.title && <Fact label="Titolo (dichiarato)">{c.declared.title}</Fact>}

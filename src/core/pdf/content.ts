@@ -6,6 +6,7 @@ import { APP_VERSION, DEVELOPER, VERIFY_DISPLAY } from '@/core/app'
 import type { Certificate } from '@/core/cert/certificate'
 import { proofFileNames } from '@/core/cert/fileNames'
 import { localTimeZone, utcOffset } from '@/core/time'
+import { formatBytes } from '@/i18n'
 
 export type Row = { label: string; value: string; mono?: boolean; note?: string }
 export type Pill = { text: string; tone: 'ok' | 'warn' | 'muted' }
@@ -42,17 +43,6 @@ const fmtTime = (d: Date, timeZone: string) =>
   new Intl.DateTimeFormat('it-IT', { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(d)
 const fmtLongDate = (d: Date, timeZone = 'UTC') =>
   new Intl.DateTimeFormat('it-IT', { timeZone, day: 'numeric', month: 'long', year: 'numeric' }).format(d)
-
-export function formatBytes(size: number): string {
-  const units = ['byte', 'KB', 'MB', 'GB', 'TB']
-  let v = size
-  let i = 0
-  while (v >= 1024 && i < units.length - 1) {
-    v /= 1024
-    i++
-  }
-  return i === 0 ? `${size} byte` : `${v.toLocaleString('it-IT', { maximumFractionDigits: 1 })} ${units[i]}`
-}
 
 export function groupHash(hex: string): string {
   return hex.match(/.{1,8}/g)?.join(' ') ?? hex
@@ -162,7 +152,7 @@ export function buildAttestatoContent(
         { label: 'Nome del file', value: name, mono: true },
         {
           label: 'Dimensione',
-          value: formatBytes(cert.file.size),
+          value: formatBytes(cert.file.size, 'it'),
           ...(cert.file.size >= 1024 ? { note: `(${cert.file.size.toLocaleString('it-IT')} byte)` } : {}),
         },
         {
@@ -203,7 +193,7 @@ export function buildAttestatoContent(
         },
       ],
       attachmentsLabel: 'File allegati a questo PDF:',
-      attachments: opts.attachments.map((a) => `${a.name} · ${formatBytes(a.size)}`),
+      attachments: opts.attachments.map((a) => `${a.name} · ${formatBytes(a.size, 'it')}`),
     },
     warnings: {
       heading: "Conserva l'archivio esattamente com'è.",
