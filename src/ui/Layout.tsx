@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { APP_VERSION, DEVELOPER, REPO_URL } from '@/core/app'
 import { Header } from './components/Header'
+import { LangSwitch } from './components/LangSwitch'
 import { ItalianNotice } from './components/ItalianNotice'
 import { useT } from './LangContext'
 import { toUrl, useRoute } from './router'
@@ -42,15 +43,18 @@ export function Layout({ children }: { children: ReactNode }) {
           </nav>
         </div>
         <div className="border-t border-line/60">
-          <p className="mx-auto max-w-6xl px-4 py-4 text-center text-xs text-muted sm:px-6">
-            Developed by{' '}
-            <a
-              className="font-medium text-ink-2 underline-offset-4 hover:text-ink hover:underline"
-              href={DEVELOPER.url}
-            >
-              {DEVELOPER.name}
-            </a>
-          </p>
+          <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 py-4 text-xs text-muted sm:flex-row sm:justify-between sm:px-6">
+            <p>
+              Developed by{' '}
+              <a
+                className="font-medium text-ink-2 underline-offset-4 hover:text-ink hover:underline"
+                href={DEVELOPER.url}
+              >
+                {DEVELOPER.name}
+              </a>
+            </p>
+            <LangSwitch />
+          </div>
         </div>
       </footer>
     </div>

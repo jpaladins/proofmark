@@ -171,6 +171,7 @@ export const it: ItMessages = {
     about: (version: string) =>
       `ProofMark ${version}, open source con licenza AGPL-3.0. Nessun dato personale raccolto, nessun cookie.`,
     footerNav: 'Informazioni',
+    language: 'Lingua',
     privacy: 'Privacy e sicurezza',
     source: 'Codice sorgente',
   },

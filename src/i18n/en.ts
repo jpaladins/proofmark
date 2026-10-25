@@ -175,6 +175,7 @@ export const en = {
     about: (version: string) =>
       `ProofMark ${version}, open source under the AGPL-3.0 licence. No personal data collected, no cookies.`,
     footerNav: 'Information',
+    language: 'Language',
     privacy: 'Privacy & security',
     source: 'Source code',
   },

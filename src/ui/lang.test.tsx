@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import App from '@/App'
@@ -17,6 +17,18 @@ afterEach(() => {
 })
 
 describe('language switch', () => {
+  test('lives in the footer, not the header, and shows both flags', () => {
+    render(<App />)
+    expect(within(screen.getByRole('banner')).queryByRole('link', { name: 'Italiano' })).not.toBeInTheDocument()
+    expect(within(screen.getByRole('banner')).queryByRole('navigation', { name: 'Language' })).not.toBeInTheDocument()
+    const nav = within(screen.getByRole('contentinfo')).getByRole('navigation', { name: 'Language' })
+    for (const name of ['English', 'Italiano']) {
+      const link = within(nav).getByRole('link', { name })
+      const flag = link.querySelector('svg')
+      expect(flag).toHaveAttribute('aria-hidden', 'true')
+    }
+  })
+
   test('IT and EN swap the page, keep the hash and save the choice', async () => {
     window.history.replaceState(null, '', `/proofmark/verify#sha256=${HEX}`)
     render(<App />)

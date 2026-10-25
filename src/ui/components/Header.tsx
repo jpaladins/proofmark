@@ -4,7 +4,6 @@ import { toUrl, useRoute, type PageId } from '../router'
 import { useT } from '../LangContext'
 import { useTheme } from '../useTheme'
 import { cx } from '../cx'
-import { LangSwitch } from './LangSwitch'
 
 export function Logo({ className }: { className?: string }) {
   return (
@@ -108,7 +107,6 @@ export function Header() {
             </span>
             <span className="sr-only">Zero-Knowledge</span>
           </p>
-          <LangSwitch />
           <ThemeToggle />
         </div>
       </div>
