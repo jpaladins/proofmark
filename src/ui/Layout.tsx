@@ -25,25 +25,28 @@ export function Layout({ children }: { children: ReactNode }) {
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-wrap justify-between gap-3 px-4 py-6 text-sm text-muted sm:px-6">
           <p>{t.about(APP_VERSION)}</p>
-          <nav aria-label={t.footerNav} className="flex flex-wrap gap-x-5 gap-y-2">
-            <a
-              className="underline-offset-4 hover:text-ink hover:underline"
-              href={toUrl('privacy', lang)}
-              onClick={(e) => {
-                if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
-                e.preventDefault()
-                navigate('privacy')
-              }}
-            >
-              {t.privacy}
-            </a>
-            <a className="underline-offset-4 hover:text-ink hover:underline" href={REPO_URL}>
-              {t.source}
-            </a>
-          </nav>
+          <div className="flex flex-col items-start gap-3 sm:items-end">
+            <nav aria-label={t.footerNav} className="flex flex-wrap gap-x-5 gap-y-2">
+              <a
+                className="underline-offset-4 hover:text-ink hover:underline"
+                href={toUrl('privacy', lang)}
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+                  e.preventDefault()
+                  navigate('privacy')
+                }}
+              >
+                {t.privacy}
+              </a>
+              <a className="underline-offset-4 hover:text-ink hover:underline" href={REPO_URL}>
+                {t.source}
+              </a>
+            </nav>
+            <LangSwitch />
+          </div>
         </div>
         <div className="border-t border-line/60">
-          <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 py-4 text-xs text-muted sm:flex-row sm:justify-between sm:px-6">
+          <div className="mx-auto max-w-6xl px-4 py-4 text-center text-xs text-muted sm:px-6">
             <p>
               Developed by{' '}
               <a
@@ -53,7 +56,6 @@ export function Layout({ children }: { children: ReactNode }) {
                 {DEVELOPER.name}
               </a>
             </p>
-            <LangSwitch />
           </div>
         </div>
       </footer>
