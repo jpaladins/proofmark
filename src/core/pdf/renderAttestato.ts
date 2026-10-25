@@ -1,4 +1,4 @@
-// Draws the two-page A4 attestation (see docs/mockups/attestato-preview.html) with pdf-lib and
+// Draws the two-page A4 attestation with pdf-lib and
 // embeds the raw proofs as PDF attachments. Returns the unsaved document so the PAdES seal can be
 // added before saving.
 import fontkit from '@pdf-lib/fontkit'

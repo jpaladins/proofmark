@@ -5,101 +5,103 @@
 <h1 align="center">ProofMark</h1>
 
 <p align="center">
-  Prova di esistenza per archivi ZIP, ancorata alla blockchain Bitcoin con OpenTimestamps e calcolata interamente nel tuo browser.
+  Proof of existence for ZIP archives, anchored to the Bitcoin blockchain with OpenTimestamps and computed entirely in your browser.
 </p>
 
 <p align="center">
   <a href="https://github.com/jpaladins/proofmark/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/jpaladins/proofmark/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/jpaladins/proofmark/actions/workflows/deploy.yml"><img alt="Deploy" src="https://github.com/jpaladins/proofmark/actions/workflows/deploy.yml/badge.svg"></a>
-  <a href="LICENSE"><img alt="Licenza AGPL-3.0" src="https://img.shields.io/badge/licenza-AGPL--3.0-047857"></a>
-  <img alt="Zero-Knowledge" src="https://img.shields.io/badge/zero--knowledge-il%20file%20non%20lascia%20il%20browser-142033">
+  <a href="LICENSE"><img alt="License AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-047857"></a>
+  <img alt="Zero-Knowledge" src="https://img.shields.io/badge/zero--knowledge-the%20file%20never%20leaves%20the%20browser-142033">
 </p>
 
 <p align="center"><strong><a href="https://jpaladins.github.io/proofmark/">jpaladins.github.io/proofmark</a></strong></p>
 
+Italian version of the site: [jpaladins.github.io/proofmark/it/](https://jpaladins.github.io/proofmark/it/)
+
 ---
 
-## Cosa fa
+## What it does
 
-Trascini l'archivio `.zip` del tuo progetto e ProofMark:
+You drag in your project's `.zip` archive and ProofMark:
 
-1. calcola l'impronta **SHA-256** nel browser, in un Web Worker e a blocchi, anche per archivi da molti GB;
-2. la invia ai calendari **OpenTimestamps**, che la scrivono in un blocco della blockchain **Bitcoin**;
-3. ti consegna subito una **ricevuta di registrazione** (PDF + JSON) con la prova `.ots` allegata. La ricevuta non attesta ancora una data;
-4. dopo la conferma, di solito entro qualche ora, nella pagina **Verifica** genera l'**attestato di esistenza**. L'attestato riporta la data del blocco Bitcoin, letta dalla blockchain e mai dal file caricato.
+1. computes the **SHA-256** fingerprint in the browser, in a Web Worker and in chunks, even for archives of many GB;
+2. sends it to the **OpenTimestamps** calendars, which write it into a block of the **Bitcoin** blockchain;
+3. immediately hands you a **registration receipt** (PDF + JSON) with the `.ots` proof attached. The receipt does not yet attest to a date;
+4. once confirmed, usually within a few hours, you generate the **attestation of existence** on the **Verify** page (currently served at `/verifica`). The attestation reports the date of the Bitcoin block, read from the blockchain and never from the uploaded file.
 
-La pagina **Verifica** controlla anche l'archivio contro una ricevuta o un attestato. Il confronto con la prova avviene offline; la rete serve solo per leggere la conferma dalla blockchain.
+The **Verify** page also checks the archive against a receipt or an attestation. The comparison with the proof happens offline; the network is only needed to read the confirmation from the blockchain.
 
-> L'archivio non viene mai caricato. Dal browser esce solo un derivato non reversibile dell'impronta, inviato ai calendari OpenTimestamps.
+> The archive is never uploaded. Only a non-reversible derivative of the fingerprint leaves the browser, sent to the OpenTimestamps calendars.
 
-## Architettura
+## Architecture
 
-Il sito è statico al 100%: non c'è codice lato server.
+The site is 100% static: there is no server-side code.
 
 ```
 Browser
 ├─ React UI (Vite, TS, Tailwind)
-├─ hash.worker.ts   SHA-256 a blocchi (hash-wasm)
-├─ core/ots/        client OpenTimestamps ──────▶ calendari OpenTimestamps (CORS)
-├─ core/pdf/        ricevuta e attestato (pdf-lib)
-└─ flow/verify.ts   verifica ─────────(online)──▶ blockstream.info (blocchi Bitcoin)
+├─ hash.worker.ts   chunked SHA-256 (hash-wasm)
+├─ core/ots/        OpenTimestamps client ──────▶ OpenTimestamps calendars (CORS)
+├─ core/pdf/        receipt and attestation (pdf-lib)
+└─ flow/verify.ts   verification ─────(online)──▶ blockstream.info (Bitcoin blocks)
 ```
 
-- `src/core/`: logica pura e testata. Contiene `hash/`, `ots/` (codec e client OpenTimestamps nativi), `pdf/` e `cert/` (modello ricevuta/attestato).
-- `src/flow/`: sequenze di certificazione e verifica. `src/ui/`: interfaccia.
-- La CSP è inserita come `<meta>` in fase di build (`src/csp.ts`), perché GitHub Pages non permette header personalizzati.
+- `src/core/`: pure, tested logic. Contains `hash/`, `ots/` (native OpenTimestamps codec and client), `pdf/` and `cert/` (receipt/attestation model).
+- `src/flow/`: certification and verification sequences. `src/ui/`: user interface.
+- The CSP is inserted as a `<meta>` tag at build time (`src/csp.ts`), because GitHub Pages does not allow custom headers.
 
-## Sviluppo locale
+## Local development
 
-Requisiti: Node.js 20+ e npm.
+Requirements: Node.js 20+ and npm.
 
 ```bash
 npm ci
 npm run dev
 ```
 
-L'app gira su http://localhost:5173/proofmark/.
+The app runs at http://localhost:5173/proofmark/.
 
-| Comando | Cosa fa |
+| Command | What it does |
 |---|---|
-| `npm test -- --run` | Tutti i test (Vitest) |
-| `npm run typecheck` | Controllo dei tipi TypeScript |
+| `npm test -- --run` | All tests (Vitest) |
+| `npm run typecheck` | TypeScript type check |
 | `npm run lint` | Lint (oxlint) |
-| `npm run build` | Build di produzione in `dist/` |
-| `npm run preview` | Serve `dist/` su http://localhost:4173/proofmark/ |
-| `PM_SAMPLES=1 npx vitest run scripts` | Genera una ricevuta e un attestato di esempio in `out/` |
+| `npm run build` | Production build into `dist/` |
+| `npm run preview` | Serves `dist/` at http://localhost:4173/proofmark/ |
+| `PM_SAMPLES=1 npx vitest run scripts` | Generates a sample receipt and attestation in `out/` |
 
-## Verifica indipendente (senza ProofMark)
+## Independent verification (without ProofMark)
 
 ```bash
-# 1. impronta dell'archivio
-certutil -hashfile archivio.zip SHA256      # Windows
-shasum -a 256 archivio.zip                  # macOS / Linux
+# 1. fingerprint of the archive
+certutil -hashfile archive.zip SHA256      # Windows
+shasum -a 256 archive.zip                  # macOS / Linux
 
-# 2. prova Bitcoin: il file .ots ha lo stesso nome dell'archivio (client: https://opentimestamps.org)
-ots upgrade archivio.ots                    # una volta, dopo la conferma
-ots verify archivio.ots -f archivio.zip
+# 2. Bitcoin proof: the .ots file has the same name as the archive (client: https://opentimestamps.org)
+ots upgrade archive.ots                    # once, after confirmation
+ots verify archive.ots -f archive.zip
 ```
 
-## Limiti
+## Limitations
 
-- La data è quella del blocco Bitcoin, con una precisione di circa due ore. La conferma arriva di solito entro qualche ora dalla richiesta.
-- L'attestato dimostra che l'archivio esisteva non oltre quella data. Non dimostra chi ne sia l'autore: autore e titolo sono dati dichiarati.
-- Non è una validazione temporale elettronica qualificata ai sensi del Regolamento (UE) 910/2014 (eIDAS). È un elemento di prova liberamente valutabile.
-- Conserva lo `.zip` **esattamente com'è**: ricomprimere gli stessi file produce un'impronta diversa.
+- The date is that of the Bitcoin block, with a precision of about two hours. Confirmation usually arrives within a few hours of the request.
+- The attestation proves that the archive existed no later than that date. It does not prove who its author is: author and title are declared data.
+- It is not a qualified electronic time stamp under Regulation (EU) 910/2014 (eIDAS). It is a piece of evidence that can be freely assessed.
+- Keep the `.zip` **exactly as it is**: recompressing the same files produces a different fingerprint.
 
-## Pubblicazione
+## Publishing
 
-Vedi [docs/DEPLOY.md](docs/DEPLOY.md).
+See [docs/DEPLOY.md](docs/DEPLOY.md).
 
-## Licenza
+## License
 
 Copyright © 2026 [JPaladins](https://github.com/jpaladins).
 
-ProofMark è software libero, distribuito con licenza [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only).
+ProofMark is free software, distributed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only).
 
-- Puoi usarlo, studiarlo, modificarlo e ridistribuirlo.
-- Chi distribuisce una copia, anche modificata, **o la mette a disposizione come sito o servizio online** deve renderne disponibile il codice sorgente con la stessa licenza.
-- In base alla sezione 7(b) della licenza, ogni copia o versione modificata deve mantenere visibile in ogni pagina l'attribuzione **«Developed by JPaladins»** con il link a https://github.com/jpaladins (vedi [NOTICE](NOTICE)).
+- You may use, study, modify and redistribute it.
+- Anyone who distributes a copy, even a modified one, **or makes it available as an online site or service** must make the source code available under the same license.
+- Under section 7(b) of the license, every copy or modified version must keep the attribution **"Developed by JPaladins"**, linked to https://github.com/jpaladins, visible on every page (see [NOTICE](NOTICE)).
 
-I font IBM Plex sono distribuiti separatamente con licenza [SIL OFL 1.1](src/assets/fonts/OFL.txt).
+The IBM Plex fonts are distributed separately under the [SIL OFL 1.1](src/assets/fonts/OFL.txt) license.
