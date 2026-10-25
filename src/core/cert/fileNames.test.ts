@@ -37,7 +37,14 @@ describe('proof file names', () => {
   })
 
   test('baseName drops the .zip extension in any case', () => {
-    expect(baseName('ProofMark.ZIP')).toBe('ProofMark')
-    expect(baseName('.zip')).toBe('archivio')
+    expect(baseName('ProofMark.ZIP', 'en')).toBe('ProofMark')
+  })
+
+  test('an archive without a name falls back to the word for archive in each language', () => {
+    expect(baseName('.zip', 'en')).toBe('archive')
+    expect(baseName('.zip', 'it')).toBe('archivio')
+    const nameless = (lang: 'en' | 'it') => ({ ...pendingCert(undefined, { lang }), file: { ...pendingCert().file, name: '.zip' } })
+    expect(proofFileNames(nameless('en')).pdf).toBe('archive_receipt.pdf')
+    expect(proofFileNames(nameless('it')).pdf).toBe('archivio_ricevuta.pdf')
   })
 })

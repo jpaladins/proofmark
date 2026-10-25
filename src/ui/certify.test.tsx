@@ -193,7 +193,7 @@ test('buildReminderIcs creates a calendar event pointing to the verify page', ()
   expect(ics).toContain('DTSTART:20261017T192058Z')
   expect(ics).toContain('SUMMARY:ProofMark — conferma Bitcoin')
   expect(ics).toContain('URL:https://jpaladins.github.io/proofmark/it/verifica')
-  expect(ics.replace(/\r\n /g, '')).toContain('opera\\, v2.zip')
+  expect(ics.replace(/\r\n /g, '')).toContain('opera\\, v2.zip e la ricevuta PM-ABC-20261017')
   expect(ics.trimEnd().endsWith('END:VCALENDAR')).toBe(true)
 })
 
@@ -202,7 +202,7 @@ test('buildReminderIcs speaks English and points to the English verify page', ()
   expect(ics).toContain('SUMMARY:ProofMark — Bitcoin confirmation')
   expect(ics).toContain('URL:https://jpaladins.github.io/proofmark/verify\r\n')
   expect(ics).toContain('PRODID:-//ProofMark//Reminder//EN')
-  expect(ics.replace(/\r\n /g, '')).toContain('upload the archive work.zip')
+  expect(ics.replace(/\r\n /g, '')).toContain('upload the archive work.zip and the receipt PM-ABC-20261017')
 })
 
 test('buildReminderIcs folds lines at 75 octets without splitting UTF-8 characters', () => {

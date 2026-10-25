@@ -9,7 +9,7 @@ export const it: ItMessages = {
     description:
       "Certifica l'esistenza di un archivio ZIP sulla blockchain Bitcoin con OpenTimestamps. Il file non lascia mai il tuo browser.",
   },
-  files: { receipt: 'ricevuta', attestation: 'attestato' },
+  files: { receipt: 'ricevuta', attestation: 'attestato', archive: 'archivio' },
   cert: { declaredNote: 'dichiarati dal richiedente, non certificati' },
   pdf: {
     tagline: 'PROVA DI ESISTENZA DIGITALE',
@@ -138,7 +138,7 @@ export const it: ItMessages = {
     },
   },
   flow: {
-    calendars: (count: number) => `${count} calendari`,
+    calendars: (count: number) => (count === 1 ? '1 calendario' : `${count} calendari`),
     blockMoment: (date: string, time: string, offset: string) => `${date}, ${time} ${offset}`,
     checks: {
       hashOk: "L'impronta dell'archivio corrisponde al certificato",
@@ -164,7 +164,7 @@ export const it: ItMessages = {
     prodId: '-//ProofMark//Promemoria//IT',
     summary: 'ProofMark — conferma Bitcoin',
     description: (verifyUrl: string, fileName: string, certId: string) =>
-      `Apri ${verifyUrl}, carica l'archivio ${fileName} e l'attestato ${certId} e scarica l'attestato aggiornato con la conferma Bitcoin.`,
+      `Apri ${verifyUrl}, carica l'archivio ${fileName} e la ricevuta ${certId} e scarica l'attestato aggiornato con la conferma Bitcoin.`,
   },
   layout: {
     skip: 'Vai al contenuto',
@@ -260,7 +260,7 @@ export const it: ItMessages = {
     deviceClock: 'Orologio del tuo dispositivo, non certificato',
     anchoring: 'Ancoraggio Bitcoin',
     pending: 'In attesa di conferma',
-    calendars: (count: number) => `${count} calendari OpenTimestamps`,
+    calendars: (count: number) => (count === 1 ? '1 calendario OpenTimestamps' : `${count} calendari OpenTimestamps`),
     downloadPdf: 'Scarica ricevuta PDF',
     downloadJson: 'Scarica ricevuta JSON',
     downloadOts: 'Scarica prova Bitcoin (.ots)',

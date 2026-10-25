@@ -3,7 +3,7 @@ import { decodePDFRawStream, PDFArray, PDFDocument, PDFName, PDFRawStream, type 
 import QRCode from 'qrcode'
 import { describe, expect, test, vi } from 'vitest'
 import { LANGS } from '@/i18n'
-import { CONFIRMED_OTS, confirmedCert, pendingCert, PENDING_OTS, testFonts, worstCaseCert } from '@/test/certFixtures'
+import { CONFIRMED_OTS, confirmedCert, pendingCert, PENDING_OTS, testFonts, worstCaseAttestation, worstCaseCert } from '@/test/certFixtures'
 import { extractAttachments, renderAttestato, verifyUrl } from './renderAttestato'
 
 const fonts = testFonts()
@@ -50,6 +50,7 @@ describe('renderAttestato', () => {
     LANGS.flatMap((lang) => [
       ['receipt', lang, () => worstCaseCert({ lang }), PENDING_OTS] as const,
       ['attestation', lang, () => confirmedCert({ author: 'W'.repeat(120), title: 'M'.repeat(120) }, { lang }), CONFIRMED_OTS] as const,
+      ['long-named attestation', lang, () => worstCaseAttestation({ lang }), CONFIRMED_OTS] as const,
     ]),
   )('keeps the longest accepted inputs clear of the footer (%s, %s)', async (_kind, _lang, make, ots) => {
     const doc = await renderAttestato(make(), { ots }, { fonts })

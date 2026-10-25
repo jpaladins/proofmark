@@ -3,8 +3,25 @@ import { formatBytes, messages } from './index'
 
 describe('dictionaries', () => {
   it('names the proof documents in each language', () => {
-    expect(messages('en').files).toEqual({ receipt: 'receipt', attestation: 'attestation' })
-    expect(messages('it').files).toEqual({ receipt: 'ricevuta', attestation: 'attestato' })
+    expect(messages('en').files).toEqual({ receipt: 'receipt', attestation: 'attestation', archive: 'archive' })
+    expect(messages('it').files).toEqual({ receipt: 'ricevuta', attestation: 'attestato', archive: 'archivio' })
+  })
+
+  it('counts calendars in the singular and the plural', () => {
+    expect(messages('it').flow.calendars(1)).toBe('1 calendario')
+    expect(messages('it').flow.calendars(3)).toBe('3 calendari')
+    expect(messages('it').result.calendars(1)).toBe('1 calendario OpenTimestamps')
+  })
+
+  it('states the legal value of the English document plainly', () => {
+    expect(messages('en').pdf.limits.valueValue).toMatch(/^Evidence that a court may freely assess\. /)
+  })
+
+  it('the calendar reminder asks for the archive and the receipt in both languages', () => {
+    const en = messages('en').reminder.description('URL', 'work.zip', 'PM-1')
+    expect(en).toContain('upload the archive work.zip and the receipt PM-1')
+    const itText = messages('it').reminder.description('URL', 'opera.zip', 'PM-1')
+    expect(itText).toMatch(/archivio opera\.zip e la ricevuta PM-1/)
   })
 
   it('English dictionary has no Italian', () => {

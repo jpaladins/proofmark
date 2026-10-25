@@ -5,7 +5,7 @@ export const en = {
     description:
       'Prove that a ZIP archive existed, anchored to the Bitcoin blockchain with OpenTimestamps. Your file never leaves your browser.',
   },
-  files: { receipt: 'receipt', attestation: 'attestation' },
+  files: { receipt: 'receipt', attestation: 'attestation', archive: 'archive' },
   /** Human text stored in the certificate JSON, in the certificate's language. */
   cert: { declaredNote: 'declared by the applicant, not certified' },
   /** Every string printed on the receipt and attestation PDF. Addresses and dates are passed in already formatted. */
@@ -103,7 +103,7 @@ export const en = {
         'The proof is anchored to the Bitcoin blockchain, a public ledger that no one can change after the fact. Anyone can verify it with OpenTimestamps without trusting ProofMark.',
       value: 'Legal value',
       valueValue:
-        'Evidence to be freely assessed. It is not a qualified electronic time stamp under Regulation (EU) 910/2014 (eIDAS). For specific legal needs, consult a professional.',
+        'Evidence that a court may freely assess. It is not a qualified electronic time stamp under Regulation (EU) 910/2014 (eIDAS). For specific legal needs, consult a professional.',
     },
     footer: {
       proof: 'The cryptographic proof is the .ots file attached to this PDF, verifiable with OpenTimestamps',
@@ -167,7 +167,7 @@ export const en = {
     prodId: '-//ProofMark//Reminder//EN',
     summary: 'ProofMark — Bitcoin confirmation',
     description: (verifyUrl: string, fileName: string, certId: string) =>
-      `Open ${verifyUrl}, upload the archive ${fileName} and the attestation ${certId}, and download the attestation updated with the Bitcoin confirmation.`,
+      `Open ${verifyUrl}, upload the archive ${fileName} and the receipt ${certId}, and download the attestation updated with the Bitcoin confirmation.`,
   },
   /** Page chrome: skip link and footer. */
   layout: {

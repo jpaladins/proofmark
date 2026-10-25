@@ -67,6 +67,20 @@ export function worstCaseCert(opts: CertOpts = {}): Certificate {
   }, opts)
 }
 
+/** The worst-case inputs on a confirmed attestation (block 358391). */
+export function worstCaseAttestation(opts: CertOpts = {}): Certificate {
+  const field = (word: string) => Array.from({ length: 20 }, () => word).join(' ').slice(0, DECLARED_MAX)
+  const receipt = build({
+    file: zip(`${'WM'.repeat(125)}W.zip`),
+    sha256: CONFIRMED_HASH,
+    ots: CONFIRMED_OTS,
+    otsInfo: { ...inspectOts(CONFIRMED_OTS), status: 'pending' },
+    requestedAt: REQUESTED_AT,
+    declared: { author: field('WWWWW'), title: field('MMMMM') },
+  }, opts)
+  return confirmCertificate(receipt, CONFIRMED_OTS, BLOCK_358391)
+}
+
 export function testFonts(): FontBytes {
   const dir = join(process.cwd(), 'src', 'assets', 'fonts', 'pdf')
   const f = (n: string) => new Uint8Array(readFileSync(join(dir, n)))
