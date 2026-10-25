@@ -1,6 +1,8 @@
 // @vitest-environment node
-import { decodePDFRawStream, PDFArray, PDFDocument, PDFRawStream, type PDFPage } from 'pdf-lib'
-import { describe, expect, test } from 'vitest'
+import { decodePDFRawStream, PDFArray, PDFDocument, PDFName, PDFRawStream, type PDFPage } from 'pdf-lib'
+import QRCode from 'qrcode'
+import { describe, expect, test, vi } from 'vitest'
+import { LANGS } from '@/i18n'
 import { CONFIRMED_OTS, confirmedCert, pendingCert, PENDING_OTS, testFonts, worstCaseCert } from '@/test/certFixtures'
 import { extractAttachments, renderAttestato, verifyUrl } from './renderAttestato'
 
@@ -44,10 +46,12 @@ describe('renderAttestato', () => {
     expect(JSON.parse(new TextDecoder().decode(files['le-stagioni-del-vetro_v3_ricevuta.json'])).id).toBe(cert.id)
   })
 
-  test.each([
-    ['receipt', () => worstCaseCert(), PENDING_OTS],
-    ['attestation', () => confirmedCert({ author: 'W'.repeat(120), title: 'M'.repeat(120) }), CONFIRMED_OTS],
-  ] as const)('keeps the longest accepted inputs clear of the footer (%s)', async (_kind, make, ots) => {
+  test.each(
+    LANGS.flatMap((lang) => [
+      ['receipt', lang, () => worstCaseCert({ lang }), PENDING_OTS] as const,
+      ['attestation', lang, () => confirmedCert({ author: 'W'.repeat(120), title: 'M'.repeat(120) }, { lang }), CONFIRMED_OTS] as const,
+    ]),
+  )('keeps the longest accepted inputs clear of the footer (%s, %s)', async (_kind, _lang, make, ots) => {
     const doc = await renderAttestato(make(), { ots }, { fonts })
     const saved = await PDFDocument.load(await doc.save())
     for (const page of saved.getPages()) {
@@ -71,8 +75,38 @@ describe('renderAttestato', () => {
   })
 })
 
-test('verifyUrl points to the GitHub Pages verify page with the hash in the fragment', () => {
-  expect(verifyUrl('ab'.repeat(32))).toBe(`https://jpaladins.github.io/proofmark/verifica#sha256=${'ab'.repeat(32)}`)
+test('verifyUrl points to the Verify page in the document language with the hash in the fragment', () => {
+  const h = 'ab'.repeat(32)
+  expect(verifyUrl(h, 'it')).toBe(`https://jpaladins.github.io/proofmark/it/verifica#sha256=${h}`)
+  expect(verifyUrl(h, 'en')).toBe(`https://jpaladins.github.io/proofmark/verify#sha256=${h}`)
+})
+
+describe.each(LANGS)('document language %s', (lang) => {
+  const expected =
+    lang === 'en'
+      ? { suffix: 'receipt', title: 'Registration receipt', locale: 'en-GB', verify: 'https://jpaladins.github.io/proofmark/verify' }
+      : { suffix: 'ricevuta', title: 'Ricevuta di registrazione', locale: 'it-IT', verify: 'https://jpaladins.github.io/proofmark/it/verifica' }
+
+  test('names the attachments, the title and the PDF language', async () => {
+    const cert = pendingCert(undefined, { lang })
+    const doc = await renderAttestato(cert, { ots: PENDING_OTS }, { fonts })
+    expect(doc.getTitle()).toBe(`${expected.title} — ${cert.id}`)
+    const bytes = await doc.save()
+    const files = await extractAttachments(bytes)
+    expect(Object.keys(files).sort()).toEqual(['le-stagioni-del-vetro_v3.ots', `le-stagioni-del-vetro_v3_${expected.suffix}.json`])
+    const saved = await PDFDocument.load(bytes, { updateMetadata: false })
+    expect(String(saved.catalog.get(PDFName.of('Lang')))).toContain(expected.locale)
+  })
+
+  test('the QR code points to Verify in the document language', async () => {
+    const spy = vi.spyOn(QRCode, 'create')
+    try {
+      await renderAttestato(pendingCert(undefined, { lang }), { ots: PENDING_OTS }, { fonts })
+      expect(String(spy.mock.calls.at(-1)?.[0])).toMatch(new RegExp(`^${expected.verify}#sha256=[0-9a-f]{64}$`))
+    } finally {
+      spy.mockRestore()
+    }
+  })
 })
 
 describe('QR panel layout', () => {

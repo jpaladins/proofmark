@@ -19,6 +19,23 @@ describe('proof file names', () => {
     })
   })
 
+  test('an English receipt and attestation use English suffixes', () => {
+    expect(proofFileNames(pendingCert(undefined, { lang: 'en' }))).toEqual({
+      pdf: 'le-stagioni-del-vetro_v3_receipt.pdf',
+      json: 'le-stagioni-del-vetro_v3_receipt.json',
+      ots: 'le-stagioni-del-vetro_v3.ots',
+    })
+    expect(proofFileNames(confirmedCert(undefined, { lang: 'en' }))).toEqual({
+      pdf: 'hello-world_attestation.pdf',
+      json: 'hello-world_attestation.json',
+      ots: 'hello-world.ots',
+    })
+  })
+
+  test('an explicitly Italian certificate keeps the Italian suffixes', () => {
+    expect(proofFileNames(confirmedCert(undefined, { lang: 'it' })).pdf).toBe('hello-world_attestato.pdf')
+  })
+
   test('baseName drops the .zip extension in any case', () => {
     expect(baseName('ProofMark.ZIP')).toBe('ProofMark')
     expect(baseName('.zip')).toBe('archivio')

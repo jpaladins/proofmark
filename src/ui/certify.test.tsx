@@ -93,7 +93,7 @@ describe('CertifyPage', () => {
     const at = new Date(new Date(requested).getTime() + 3 * 3600_000)
     const hhmm = new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' }).format(at)
     const banner = await screen.findByRole('status', { name: 'Conferma Bitcoin in arrivo' })
-    expect(banner).toHaveTextContent('Tra qualche ora torna su jpaladins.github.io/proofmark/verifica')
+    expect(banner).toHaveTextContent('Tra qualche ora torna su jpaladins.github.io/proofmark/it/verifica')
     expect(banner).toHaveTextContent(`dopo le ${hhmm} circa`)
     expect(within(banner).getByRole('button', { name: 'Aggiungi promemoria al calendario' })).toBeInTheDocument()
   })

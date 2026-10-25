@@ -1,8 +1,10 @@
 import { APP_URL, APP_VERSION } from '@/core/app'
 import { bytesToBase64 } from '@/core/base64'
 import type { OtsInfo } from '@/core/ots/ots'
+import { messages, type Lang } from '@/i18n'
 
-export const DECLARED_NOTE = 'dichiarati dal richiedente, non certificati'
+/** Note stored with the declared data, in the certificate's language. */
+export const declaredNote = (lang: Lang): string => messages(lang).cert.declaredNote
 export const DECLARED_MAX = 120
 
 /**
@@ -18,7 +20,10 @@ export type Certificate = {
   createdAt: string
   /** Time of the request from the user's device clock: declared, not certified. */
   requestedAt: string
-  declared?: { author?: string; title?: string; note: typeof DECLARED_NOTE }
+  /** Language of the documents. Absent on certificates issued before the English version: Italian. */
+  lang?: Lang
+  /** `note` is human text in the certificate's language; any value is accepted when parsing. */
+  declared?: { author?: string; title?: string; note: string }
   file: { name: string; size: number; lastModified: string; sha256: string }
   opentimestamps: {
     status: 'pending' | 'confirmed'
@@ -45,11 +50,14 @@ export function makeCertificateId(sha256Hex: string, requestedAt: Date): string 
   return `PM-${sha256Hex.slice(0, 12).toUpperCase()}-${day}`
 }
 
-function cleanDeclared(declared?: { author?: string; title?: string }): Certificate['declared'] {
+/** Language a certificate's documents are written in. */
+export const certLang = (c: Pick<Certificate, 'lang'>): Lang => c.lang ?? 'it'
+
+function cleanDeclared(lang: Lang, declared?: { author?: string; title?: string }): Certificate['declared'] {
   const author = declared?.author?.trim().slice(0, DECLARED_MAX)
   const title = declared?.title?.trim().slice(0, DECLARED_MAX)
   if (!author && !title) return undefined
-  return { ...(author ? { author } : {}), ...(title ? { title } : {}), note: DECLARED_NOTE }
+  return { ...(author ? { author } : {}), ...(title ? { title } : {}), note: declaredNote(lang) }
 }
 
 /** Builds the receipt issued right after the hash was submitted to the calendars. */
@@ -60,14 +68,16 @@ export function buildCertificate(input: {
   otsInfo: OtsInfo
   requestedAt?: Date
   declared?: { author?: string; title?: string }
+  lang: Lang
 }): Certificate {
   const { file, sha256, ots, otsInfo } = input
   const requestedAt = input.requestedAt ?? new Date()
-  const declared = cleanDeclared(input.declared)
+  const declared = cleanDeclared(input.lang, input.declared)
   return {
     schema: 'proofmark/v1',
     id: makeCertificateId(sha256, requestedAt),
     kind: 'ricevuta',
+    lang: input.lang,
     createdAt: new Date().toISOString(),
     requestedAt: requestedAt.toISOString(),
     ...(declared ? { declared } : {}),

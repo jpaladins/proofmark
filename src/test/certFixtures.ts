@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { buildCertificate, confirmCertificate, DECLARED_MAX, type Certificate } from '@/core/cert/certificate'
 import { inspectOts } from '@/core/ots/ots'
 import type { FontBytes } from '@/core/pdf/fonts'
+import type { Lang } from '@/i18n'
 import { fixture } from './fixtures'
 
 const sha256Of = (name: string) => createHash('sha256').update(fixture(name)).digest('hex')
@@ -17,44 +18,53 @@ export const CONFIRMED_OTS = fixture('hello-world.txt.ots')
 export const BLOCK_358391 = { block: 358391, blockTime: new Date(1432827678000) }
 export const REQUESTED_AT = new Date('2026-10-18T10:32:15Z')
 
+/** `lang` omitted builds a certificate as issued before the English version: no `lang`, read as Italian. */
+export type CertOpts = { lang?: Lang }
+
+function build(input: Omit<Parameters<typeof buildCertificate>[0], 'lang'>, { lang }: CertOpts): Certificate {
+  const cert = buildCertificate({ ...input, lang: lang ?? 'it' })
+  if (!lang) delete cert.lang
+  return cert
+}
+
 const zip = (name: string) =>
   new File([new Uint8Array([0x50, 0x4b, 3, 4])], name, { lastModified: Date.UTC(2026, 9, 16, 21, 41) })
 
-export function pendingCert(declared?: { author?: string; title?: string }): Certificate {
-  return buildCertificate({
+export function pendingCert(declared?: { author?: string; title?: string }, opts: CertOpts = {}): Certificate {
+  return build({
     file: zip('le-stagioni-del-vetro_v3.zip'),
     sha256: PENDING_HASH,
     ots: PENDING_OTS,
     otsInfo: inspectOts(PENDING_OTS),
     requestedAt: REQUESTED_AT,
     declared,
-  })
+  }, opts)
 }
 
 /** A receipt for hello-world.txt, then confirmed into an attestation for block 358391. */
-export function confirmedCert(declared?: { author?: string; title?: string }): Certificate {
-  const receipt = buildCertificate({
+export function confirmedCert(declared?: { author?: string; title?: string }, opts: CertOpts = {}): Certificate {
+  const receipt = build({
     file: zip('hello-world.zip'),
     sha256: CONFIRMED_HASH,
     ots: CONFIRMED_OTS,
     otsInfo: { ...inspectOts(CONFIRMED_OTS), status: 'pending' },
     requestedAt: REQUESTED_AT,
     declared,
-  })
+  }, opts)
   return confirmCertificate(receipt, CONFIRMED_OTS, BLOCK_358391)
 }
 
 /** Longest inputs the app accepts: a 255-character file name and both declared fields at DECLARED_MAX, in wide glyphs. */
-export function worstCaseCert(): Certificate {
+export function worstCaseCert(opts: CertOpts = {}): Certificate {
   const field = (word: string) => Array.from({ length: 20 }, () => word).join(' ').slice(0, DECLARED_MAX)
-  return buildCertificate({
+  return build({
     file: zip(`${'WM'.repeat(125)}W.zip`),
     sha256: PENDING_HASH,
     ots: PENDING_OTS,
     otsInfo: inspectOts(PENDING_OTS),
     requestedAt: REQUESTED_AT,
     declared: { author: field('WWWWW'), title: field('MMMMM') },
-  })
+  }, opts)
 }
 
 export function testFonts(): FontBytes {

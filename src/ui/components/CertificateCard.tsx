@@ -1,7 +1,7 @@
 import { CalendarPlus, Download, FileJson, FileText, RotateCcw } from 'lucide-react'
 import { useLayoutEffect, useRef } from 'react'
-import { PENDING_REMINDER } from '@/core/pdf/content'
-import { formatBytes } from '@/i18n'
+import { verifyDisplayFor } from '@/core/app'
+import { formatBytes, messages } from '@/i18n'
 import type { CertifyResult } from '@/flow/certify'
 import { utcOffset } from '@/core/time'
 import { buildReminderIcs } from '../ics'
@@ -32,7 +32,8 @@ export function PendingBanner({ at, certId, fileName }: { at: Date; certId: stri
         </Button>
       }
     >
-      {PENDING_REMINDER}
+      {/* Italian until the result page follows the page language. */}
+      {messages('it').pdf.pendingReminder(verifyDisplayFor('it'))}
     </Alert>
   )
 }

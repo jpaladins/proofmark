@@ -28,7 +28,7 @@ describe('receipt (ricevuta)', () => {
 
   test('carries the reminder in the Bitcoin box and first in the warnings', () => {
     const c = receipt()
-    expect(c.bitcoin.reminder?.body).toContain('jpaladins.github.io/proofmark/verifica')
+    expect(c.bitcoin.reminder?.body).toContain('jpaladins.github.io/proofmark/it/verifica')
     expect(c.bitcoin.pill).toEqual({ text: 'In attesa di conferma', tone: 'warn' })
     expect(c.warnings.bullets[0]).toContain("scarica l'attestato")
   })
@@ -166,4 +166,91 @@ describe('file names match the downloaded files', () => {
       expect(text).not.toContain('certificato.json')
     }
   })
+})
+
+describe('English documents', () => {
+  const receiptEn = (declared?: { author?: string; title?: string }) =>
+    buildAttestatoContent(pendingCert(declared, { lang: 'en' }), { attachments: ATTACH, timeZone: TZ })
+  const attestationEn = (timeZone = TZ) =>
+    buildAttestatoContent(confirmedCert(undefined, { lang: 'en' }), { attachments: ATTACH, timeZone })
+
+  test('the receipt is titled as a receipt and never claims an attested date', () => {
+    const c = receiptEn()
+    expect(c.title).toBe('Registration receipt')
+    expect(c.docLabel).toBe('Receipt no.')
+    expect(c.tone).toBe('pending')
+    expect(c.hero.heading).toBe('Registration sent: the date is not attested yet')
+    expect(c.hero.stamp).toBeUndefined()
+    expect(allText(c)).not.toMatch(/Existence attested/)
+  })
+
+  test('the receipt reminder points to the English Verify page', () => {
+    const c = receiptEn()
+    expect(c.bitcoin.reminder?.body).toContain('jpaladins.github.io/proofmark/verify')
+    expect(c.bitcoin.reminder?.body).not.toContain('verifica')
+    expect(c.warnings.bullets[0]).toContain('jpaladins.github.io/proofmark/verify')
+  })
+
+  test('the attestation attests existence at the time of the Bitcoin block, in en-GB dates', () => {
+    const c = attestationEn()
+    expect(c.title).toBe('Certificate of Digital Existence')
+    expect(c.docLabel).toBe('Attestation no.')
+    expect(c.tone).toBe('confirmed')
+    expect(c.hero.heading).toBe('Existence attested on 28 May 2015, 15:41:18 UTC')
+    expect(c.hero.body).toContain('Bitcoin block #358391')
+    expect(c.hero.stamp).toEqual({ kicker: 'Existence attested on', date: '28 May 2015', time: '17:41:18 UTC+2' })
+    expect(c.bitcoin.reminder).toBeUndefined()
+  })
+
+  test('the tagline, page footers and the page-2 heading are in English', () => {
+    expect(receiptEn().tagline).toBe('DIGITAL PROOF OF EXISTENCE')
+    expect(receipt().tagline).toBe('PROVA DI ESISTENZA DIGITALE')
+    expect([receiptEn().docName, attestationEn().docName]).toEqual(['receipt', 'attestation'])
+    expect([receipt().docName, attestation().docName]).toEqual(['ricevuta', 'attestato'])
+    expect(receiptEn().pageLabels).toEqual(['Page 1 of 2', 'Page 2 of 2'])
+    expect(receiptEn().page2Heading).toBe('Verification instructions and warnings')
+  })
+
+  test('the brand credit is the same in both languages', () => {
+    expect(receiptEn().brandCredit).toBe('BY JPALADINS')
+    expect(attestationEn().brandCredit).toBe('BY JPALADINS')
+  })
+
+  test('verification commands use the real file names', () => {
+    const code = receiptEn().verify.steps.flatMap((s) => s.code ?? []).join('\n')
+    expect(code).toContain('certutil -hashfile "le-stagioni-del-vetro_v3.zip" SHA256')
+    expect(code).toContain('ots upgrade "le-stagioni-del-vetro_v3.ots"')
+    expect(code).toContain('ots verify "le-stagioni-del-vetro_v3.ots" -f "le-stagioni-del-vetro_v3.zip"')
+  })
+
+  test('byte sizes use English units', () => {
+    expect(receiptEn().subject.rows[1]).toEqual({ label: 'Size', value: '4 bytes' })
+    expect(receiptEn().verify.attachments[0]).toBe('le-stagioni-del-vetro_v3.ots · 1 KB')
+  })
+
+  test('declared data keeps its labels in English', () => {
+    expect(receiptEn({ author: 'Ada Lovelace' }).declared?.rows).toEqual([{ label: 'Author', value: 'Ada Lovelace' }])
+  })
+
+  test('keeps the eIDAS limit and never makes forbidden legal claims', () => {
+    for (const c of [receiptEn({ author: 'A', title: 'T' }), attestationEn()]) {
+      const text = allText(c).toLowerCase()
+      expect(text).toContain('910/2014')
+      expect(text).not.toContain('qualified timestamp')
+      expect(text).not.toContain('legally certain date')
+      expect(text).not.toContain('digicert')
+      expect(text).not.toContain('rfc 3161')
+    }
+  })
+
+  test('has no Italian left', () => {
+    const italian = /\b(della|degli|archivio|ricevuta|attestato|dichiarati|blocco|impronta|alle)\b/i
+    for (const c of [receiptEn({ author: 'A', title: 'T' }), attestationEn(), attestationEn('UTC')]) {
+      expect(allText(c)).not.toMatch(italian)
+    }
+  })
+})
+
+test('a certificate without lang renders in Italian', () => {
+  expect(buildAttestatoContent(pendingCert(), { attachments: ATTACH, timeZone: TZ }).title).toBe('Ricevuta di registrazione')
 })
