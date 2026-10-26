@@ -1,6 +1,8 @@
 import { Coffee } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { APP_VERSION, DEVELOPER, REPO_URL, SUPPORT_URL } from '@/core/app'
+import logoDark from '@/assets/brand/jpaladins-logo-dark.svg'
+import logoLight from '@/assets/brand/jpaladins-logo-light.svg'
 import { Header } from './components/Header'
 import { LangSwitch } from './components/LangSwitch'
 import { ItalianNotice } from './components/ItalianNotice'
@@ -55,13 +57,13 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
         <div className="border-t border-line/60">
           <div className="mx-auto max-w-6xl px-4 py-4 text-center text-xs text-muted sm:px-6">
-            <p>
+            {/* The NOTICE attribution: the logo stands for the name, which stays in the text for readers. */}
+            <p className="flex items-center justify-center gap-2.5">
               Developed by{' '}
-              <a
-                className="font-medium text-ink-2 underline-offset-4 hover:text-ink hover:underline"
-                href={DEVELOPER.url}
-              >
-                {DEVELOPER.name}
+              <a className="rounded-sm opacity-90 transition-opacity hover:opacity-100" href={DEVELOPER.url}>
+                <span className="sr-only">{DEVELOPER.name}</span>
+                <img src={logoLight} alt="" width={102} height={26} className="h-6.5 w-auto dark:hidden" />
+                <img src={logoDark} alt="" width={102} height={26} className="hidden h-6.5 w-auto dark:block" />
               </a>
             </p>
           </div>
