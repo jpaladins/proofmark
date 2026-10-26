@@ -86,6 +86,18 @@ test('the footer credits the developer', () => {
   expect(within(footer).getByRole('link', { name: 'JPaladins' })).toHaveAttribute('href', 'https://github.com/jpaladins')
 })
 
+test('the developer credit shows the JPaladins logo for the light and the dark theme', () => {
+  render(<App />)
+  const link = within(screen.getByRole('contentinfo')).getByRole('link', { name: 'JPaladins' })
+  const logos = link.querySelectorAll('img')
+  expect(logos).toHaveLength(2)
+  expect(logos[0].getAttribute('src')).toMatch(/jpaladins-logo-light/)
+  expect(logos[0].className).toMatch(/dark:hidden/)
+  expect(logos[1].getAttribute('src')).toMatch(/jpaladins-logo-dark/)
+  expect(logos[1].className).toMatch(/(^|\s)hidden(\s|$)/)
+  expect(logos[1].className).toMatch(/dark:block/)
+})
+
 test('the footer names the AGPL licence and links the source code', () => {
   render(<App />)
   const footer = screen.getByRole('contentinfo')
