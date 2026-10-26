@@ -62,4 +62,9 @@ describe.each(['/proofmark/it/privacy', '/proofmark/privacy'])('privacy page at 
     expect(container.textContent).toContain('pm-theme')
     expect(container.textContent).toContain('pm:lang')
   })
+
+  test('explains that the support link opens Ko-fi and loads nothing from it', () => {
+    const { container } = render(<PrivacyPage />)
+    expect(container.textContent).toContain('Ko-fi')
+  })
 })

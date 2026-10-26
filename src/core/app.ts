@@ -10,3 +10,5 @@ export const verifyUrlFor = (lang: Lang): string => `${APP_URL}${ROUTES[lang].ve
 export const verifyDisplayFor = (lang: Lang): string => verifyUrlFor(lang).replace(/^https:\/\//, '')
 export const REPO_URL = 'https://github.com/jpaladins/proofmark'
 export const DEVELOPER = { name: 'JPaladins', url: 'https://github.com/jpaladins' }
+/** Donations page, linked from the footer as a plain link: nothing is loaded from Ko-fi. */
+export const SUPPORT_URL = 'https://ko-fi.com/jpaladins'

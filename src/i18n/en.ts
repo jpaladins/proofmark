@@ -178,6 +178,7 @@ export const en = {
     language: 'Language',
     privacy: 'Privacy & security',
     source: 'Source code',
+    support: 'Buy Me a Coffee',
   },
   header: {
     sections: 'Sections',

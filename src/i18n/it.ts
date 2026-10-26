@@ -174,6 +174,7 @@ export const it: ItMessages = {
     language: 'Lingua',
     privacy: 'Privacy e sicurezza',
     source: 'Codice sorgente',
+    support: 'Offrimi un caffè',
   },
   header: {
     sections: 'Sezioni',
