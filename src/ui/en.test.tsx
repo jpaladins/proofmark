@@ -59,14 +59,14 @@ describe('English layout', () => {
   test('footer links to Ko-fi to support the project, in both languages', () => {
     render(<App />)
     const footer = screen.getByRole('contentinfo')
-    expect(within(footer).getByRole('link', { name: 'Support ProofMark' })).toHaveAttribute('href', 'https://ko-fi.com/jpaladins')
+    expect(within(footer).getByRole('link', { name: 'Buy Me a Coffee' })).toHaveAttribute('href', 'https://ko-fi.com/jpaladins')
   })
 
   test('the Italian footer offers the same support link', () => {
     window.history.replaceState(null, '', '/proofmark/it/')
     render(<App />)
     const footer = screen.getByRole('contentinfo')
-    expect(within(footer).getByRole('link', { name: 'Sostieni ProofMark' })).toHaveAttribute('href', 'https://ko-fi.com/jpaladins')
+    expect(within(footer).getByRole('link', { name: 'Offrimi un caffè' })).toHaveAttribute('href', 'https://ko-fi.com/jpaladins')
   })
 
   test('formatEta speaks English', () => {

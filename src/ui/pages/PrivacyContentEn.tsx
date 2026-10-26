@@ -104,7 +104,7 @@ export function PrivacyContentEn() {
           .
         </p>
         <p>
-          The <strong className="text-ink">Support ProofMark</strong> link in the footer is an ordinary link to Ko-fi, an
+          The <strong className="text-ink">Buy Me a Coffee</strong> link in the footer is an ordinary link to Ko-fi, an
           external donation service: the site loads nothing from Ko-fi and sends it nothing. Ko-fi sees your visit only if
           you open the link, under its own privacy policy.
         </p>
