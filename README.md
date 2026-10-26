@@ -75,7 +75,7 @@ Browser
 
 ## Local development
 
-Requirements: Node.js 20+ and npm.
+Requirements: Node.js 22.18+ (24 LTS recommended) and npm.
 
 ```bash
 npm ci
@@ -90,6 +90,7 @@ The app runs at http://localhost:5173/proofmark/.
 | `npm run typecheck` | TypeScript type check |
 | `npm run lint` | Lint (oxlint) |
 | `npm run build` | Production build into `dist/` |
+| `npm run check:build` | Checks the localized pages emitted in `dist/` |
 | `npm run preview` | Serves `dist/` at http://localhost:4173/proofmark/ |
 | `PM_SAMPLES=1 npx vitest run scripts` | Generates a sample receipt and attestation in `out/` |
 
@@ -112,9 +113,9 @@ ots verify archive.ots -f archive.zip
 - It is not a qualified electronic time stamp under Regulation (EU) 910/2014 (eIDAS). It is a piece of evidence that can be freely assessed.
 - Keep the `.zip` **exactly as it is**: recompressing the same files produces a different fingerprint.
 
-## Publishing
+## Security
 
-See [docs/DEPLOY.md](docs/DEPLOY.md).
+To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## Support
 
