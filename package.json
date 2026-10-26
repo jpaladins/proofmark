@@ -2,6 +2,22 @@
   "name": "proofmark",
   "private": true,
   "version": "1.0.0",
+  "description": "Proof of existence for ZIP archives, anchored to the Bitcoin blockchain with OpenTimestamps, computed entirely in the browser.",
+  "homepage": "https://jpaladins.github.io/proofmark/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jpaladins/proofmark.git"
+  },
+  "bugs": "https://github.com/jpaladins/proofmark/issues",
+  "author": "JPaladins (https://github.com/jpaladins)",
+  "keywords": [
+    "opentimestamps",
+    "bitcoin",
+    "proof-of-existence",
+    "timestamping",
+    "sha256",
+    "privacy"
+  ],
   "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
