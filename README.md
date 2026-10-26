@@ -116,6 +116,10 @@ ots verify archive.ots -f archive.zip
 
 See [docs/DEPLOY.md](docs/DEPLOY.md).
 
+## Support
+
+ProofMark is free and stays free. If it is useful to you, you can support its development through [GitHub Sponsors](https://github.com/sponsors/jpaladins) or [Ko-fi](https://ko-fi.com/jpaladins). The site links to Ko-fi with a plain link in the footer: nothing is loaded from Ko-fi.
+
 ## License
 
 Copyright © 2026 [JPaladins](https://github.com/jpaladins).

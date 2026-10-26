@@ -1,5 +1,6 @@
+import { Coffee } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { APP_VERSION, DEVELOPER, REPO_URL } from '@/core/app'
+import { APP_VERSION, DEVELOPER, REPO_URL, SUPPORT_URL } from '@/core/app'
 import { Header } from './components/Header'
 import { LangSwitch } from './components/LangSwitch'
 import { ItalianNotice } from './components/ItalianNotice'
@@ -40,6 +41,13 @@ export function Layout({ children }: { children: ReactNode }) {
               </a>
               <a className="underline-offset-4 hover:text-ink hover:underline" href={REPO_URL}>
                 {t.source}
+              </a>
+              <a
+                className="inline-flex items-center gap-1.5 underline-offset-4 hover:text-ink hover:underline"
+                href={SUPPORT_URL}
+              >
+                <Coffee aria-hidden className="size-4" />
+                {t.support}
               </a>
             </nav>
             <LangSwitch />

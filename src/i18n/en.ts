@@ -178,6 +178,7 @@ export const en = {
     language: 'Language',
     privacy: 'Privacy & security',
     source: 'Source code',
+    support: 'Support ProofMark',
   },
   header: {
     sections: 'Sections',

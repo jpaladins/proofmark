@@ -104,6 +104,11 @@ export function PrivacyContentIt() {
           </a>
           .
         </p>
+        <p>
+          Il link <strong className="text-ink">Sostieni ProofMark</strong> nel footer è un normale collegamento a Ko-fi, un
+          servizio esterno per le donazioni: il sito non carica nulla da Ko-fi e non gli invia nulla. Ko-fi vede la tua
+          visita solo se apri il link, secondo la sua informativa sulla privacy.
+        </p>
       </Section>
 
       <Section id="non-facciamo" title="Cosa ProofMark non fa">
